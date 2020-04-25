@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "chestxray"
+version = "0.1.0"
+description = ""
+authors = ["Alexey Demyanchuk <alexeydemyanchuk@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+ipykernel = "^5.2.1"
+python-dotenv = "^0.13.0"
+tensorflow = "^2.1.0"
+pandas = "^1.0.3"
+seaborn = "^0.10.0"
+matplotlib = "^3.2.1"
+numpy = "^1.18.3"
+opencv-python = "^4.2.0"
+scikit-learn = "^0.22.2"
+pillow = "^7.1.1"
+pre-commit = "^2.3.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.4.1"
+flake8 = "^3.7.9"
+black = "^19.10b0"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
