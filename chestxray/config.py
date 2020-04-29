@@ -7,6 +7,7 @@ load_dotenv()
 
 DATA_PATH = Path(os.getenv("DATA_PATH"))
 
-# those precomputed in C1M1 notebook
-CHESTRAIN_MEAN = 122.40529296875
-CHESTRAIN_STD = 70.33326676182992
+PANDA_PATH = DATA_PATH / "Panda"
+PANDA_IMGS = PANDA_PATH / "train_images"
+PANDA_MASKS = PANDA_PATH / "train_label_masks"
+TRAIN_CSV = PANDA_PATH / "train.csv"
