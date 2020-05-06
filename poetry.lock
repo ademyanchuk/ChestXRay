@@ -29,6 +29,18 @@ tests = ["pytest"]
 
 [[package]]
 category = "main"
+description = ""
+name = "apex"
+optional = false
+python-versions = "*"
+version = "0.1"
+
+[package.source]
+reference = "cf50dc7c031295360c246a72ac03d22cdbb96354"
+type = "git"
+url = "https://github.com/NVIDIA/apex"
+[[package]]
+category = "main"
 description = "A small Python module for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
 name = "appdirs"
 optional = false
@@ -984,7 +996,7 @@ six = ">=1.9"
 [[package]]
 category = "main"
 description = "Run a subprocess in a pseudo terminal"
-marker = "sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\""
+marker = "python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\" and (python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\")"
 name = "ptyprocess"
 optional = false
 python-versions = "*"
@@ -1623,7 +1635,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "76282d1d8e200e097653956ea3845817d7272400685cb5146e536b7ef6234696"
+content-hash = "c80f52d65ba24232e0333cf05fbd74c3abd08a3c88ec62c04fa548d2aa992342"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1633,6 +1645,7 @@ absl-py = [
 albumentations = [
     {file = "albumentations-0.4.5.tar.gz", hash = "sha256:77bda58c5cfa5ec8dccd360bf75be52449d6bd7a25dce087192e3c78dd2a439a"},
 ]
+apex = []
 appdirs = [
     {file = "appdirs-1.4.3-py2.py3-none-any.whl", hash = "sha256:d8b24664561d0d34ddfaec54636d502d7cea6e29c3eaf68f3df6180863e2166e"},
     {file = "appdirs-1.4.3.tar.gz", hash = "sha256:9e5896d1372858f8dd3344faf4e5014d21849c756c8d5701f78f8a103b372d92"},
