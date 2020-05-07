@@ -31,3 +31,4 @@ class CFG:
     img_id_col = "image_id"
     target_col = "isup_grade"
     n_fold = 4
+    tiff_layer = -1
