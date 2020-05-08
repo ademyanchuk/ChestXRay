@@ -1,4 +1,7 @@
 """Data dispatching and processing related module"""
+import functools
+import operator
+
 import cv2
 import numpy as np
 import skimage.io
@@ -64,9 +67,9 @@ class TrainDataset(Dataset):
     def __getitem__(self, idx):
         file_id = self.df[CFG.img_id_col].values[idx]
         file_path = f"{PANDA_IMGS}/{file_id}.tiff"
-        image = skimage.io.MultiImage(file_path)
+        image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
         image = cv2.resize(
-            image[-1], (CFG.img_height, CFG.img_width), interpolation=cv2.INTER_AREA
+            image, (CFG.img_height, CFG.img_width), interpolation=cv2.INTER_AREA
         )
 
         if self.transform:
@@ -80,3 +83,127 @@ class TrainDataset(Dataset):
             item = (image, label, file_id)
 
         return item
+
+
+class TestDataset(Dataset):
+    def __init__(self, df, transform=None):
+        self.df = df
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        file_id = self.df[CFG.img_id_col].values[idx]
+        file_path = (
+            f"../input/prostate-cancer-grade-assessment/test_images/{file_id}.tiff"
+        )
+        image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+        image = cv2.resize(
+            image, (CFG.img_height, CFG.img_width), interpolation=cv2.INTER_AREA
+        )
+
+        if self.transform:
+            augmented = self.transform(image=image)
+            image = augmented["image"]
+
+        return image
+
+
+# Make iles from image and stack thresholding by white-ish pixels
+
+
+def make_tiles(img, tile_h=128, tile_w=128):
+    img_h, img_w = img.shape[0], img.shape[1]
+    steps_h = np.floor(img_h / tile_h).astype(np.int)
+    steps_w = np.floor(img_w / tile_w).astype(np.int)
+    tiles = []
+    for i in range(steps_h):
+        for j in range(steps_w):
+            tile = img[
+                i * tile_h : i * tile_h + tile_h, j * tile_w : j * tile_w + tile_w, :
+            ]
+            tiles.append(tile)
+    return np.array(tiles)
+
+
+def pxl_percentage(img, above_thresh=230):
+    # percent of white-ish pixels in img
+    whitish = (img > above_thresh).sum()
+    pix_num = functools.reduce(operator.mul, img.shape)
+    return whitish / pix_num
+
+
+def stack_sorted(tiles, ids):
+    # hard-code 4x4 blockd = 512x512 pxs
+    stacked = np.vstack([np.hstack(tiles[ids[i : i + 4]]) for i in range(0, 16, 4)])
+    return stacked
+
+
+def img_to_tiles(img, *args, **kwargs):
+    # Put all together
+    tiles = make_tiles(img)
+    if len(tiles) < 16:
+        return img
+    white_pcts = np.array([pxl_percentage(tile) for tile in tiles])
+    gradient_ids = np.argsort(white_pcts)
+
+    return stack_sorted(tiles, gradient_ids)
+
+
+class TilesTrainDataset(Dataset):
+    def __init__(self, df, transform=None, debug=CFG.debug):
+        self.df = df
+        self.labels = df[CFG.target_col].values
+        self.transform = transform
+        self.debug = debug
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        file_id = self.df[CFG.img_id_col].values[idx]
+        file_path = f"{PANDA_IMGS}/{file_id}.tiff"
+        image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+        image = img_to_tiles(image)
+        image = cv2.resize(
+            image, (CFG.img_height, CFG.img_width), interpolation=cv2.INTER_AREA
+        )
+
+        if self.transform:
+            augmented = self.transform(image=image)
+            image = augmented["image"]
+
+        label = self.labels[idx]
+
+        item = (image, label)
+        if self.debug:
+            item = (image, label, file_id)
+
+        return item
+
+
+class TilesTestDataset(Dataset):
+    def __init__(self, df, transform=None):
+        self.df = df
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        file_id = self.df[CFG.img_id_col].values[idx]
+        file_path = (
+            f"../input/prostate-cancer-grade-assessment/test_images/{file_id}.tiff"
+        )
+        image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+        image = img_to_tiles(image)
+        image = cv2.resize(
+            image, (CFG.img_height, CFG.img_width), interpolation=cv2.INTER_AREA
+        )
+
+        if self.transform:
+            augmented = self.transform(image=image)
+            image = augmented["image"]
+
+        return image
