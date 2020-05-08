@@ -7,7 +7,12 @@ import numpy as np
 import skimage.io
 import torch
 from albumentations import Compose
+from albumentations import Flip
+from albumentations import GaussNoise
+from albumentations import HueSaturationValue
 from albumentations import Normalize
+from albumentations import RandomBrightnessContrast
+from albumentations import ShiftScaleRotate
 from albumentations.pytorch import ToTensorV2
 from torch.utils.data import Dataset
 
@@ -22,6 +27,13 @@ def get_transforms(*, data):
     if data == "train":
         return Compose(
             [
+                Flip(),
+                GaussNoise(),
+                RandomBrightnessContrast(),
+                HueSaturationValue(),
+                ShiftScaleRotate(
+                    shift_limit=0.0625, scale_limit=0.2, rotate_limit=45, p=0.3
+                ),
                 # This transformation first / 255. -> scale to [0,1] and
                 # then - mean and / by std
                 Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
