@@ -13,8 +13,7 @@ def trainable_params(model):
 
 
 # Loss @ Init
-def cce_loss_at_init(model, num_classes):
-    criterion = nn.CrossEntropyLoss()
+def cce_loss_at_init(model, num_classes, criterion=nn.CrossEntropyLoss()):
     input = torch.randn(64, 3, 256, 256, requires_grad=True)
     target = torch.empty(64, dtype=torch.long).random_(num_classes)
     model.eval()
