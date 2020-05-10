@@ -18,37 +18,56 @@ from torch.utils.data import Dataset
 
 from chestxray.config import CFG
 from chestxray.config import PANDA_IMGS
+from chestxray.config import TILES_IMGS
 
 
-def get_transforms(*, data):
+augs_dict = {
+    "heavy": Compose(
+        [
+            Flip(),
+            GaussNoise(),
+            RandomBrightnessContrast(),
+            HueSaturationValue(),
+            ShiftScaleRotate(
+                shift_limit=0.0625, scale_limit=0.2, rotate_limit=45, p=0.3
+            ),
+            # This transformation first / 255. -> scale to [0,1] and
+            # then - mean and / by std
+            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
+            # Convert to torch tensor and swap axis to make Chanel first
+            ToTensorV2(),
+        ]
+    ),
+    "light": Compose(
+        [
+            Flip(),
+            ShiftScaleRotate(
+                shift_limit=0.0625, scale_limit=0.2, rotate_limit=45, p=0.3
+            ),
+            # This transformation first / 255. -> scale to [0,1] and
+            # then - mean and / by std
+            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
+            # Convert to torch tensor and swap axis to make Chanel first
+            ToTensorV2(),
+        ]
+    ),
+}
+
+no_aug = Compose(
+    [Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],), ToTensorV2()]
+)
+
+
+def get_transforms(*, data, aug="light"):
 
     assert data in ("train", "valid")
+    assert aug in ("light", "heavy")
 
     if data == "train":
-        return Compose(
-            [
-                Flip(),
-                GaussNoise(),
-                RandomBrightnessContrast(),
-                HueSaturationValue(),
-                ShiftScaleRotate(
-                    shift_limit=0.0625, scale_limit=0.2, rotate_limit=45, p=0.3
-                ),
-                # This transformation first / 255. -> scale to [0,1] and
-                # then - mean and / by std
-                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
-                # Convert to torch tensor and swap axis to make Chanel first
-                ToTensorV2(),
-            ]
-        )
+        return augs_dict[aug]
 
     elif data == "valid":
-        return Compose(
-            [
-                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
-                ToTensorV2(),
-            ]
-        )
+        return no_aug
 
 
 class ZeroDataset(Dataset):
@@ -146,24 +165,77 @@ def pxl_percentage(img, above_thresh=230):
     return whitish / pix_num
 
 
-def stack_sorted(tiles, ids):
-    # hard-code 4x4 blockd = 512x512 pxs
-    stacked = np.vstack([np.hstack(tiles[ids[i : i + 4]]) for i in range(0, 16, 4)])
+def stack_sorted(tiles, ids, num_tiles):
+    # lets try hard-code 6x6 blocks
+    step = np.sqrt(num_tiles).astype(int)
+    stacked = np.vstack(
+        [np.hstack(tiles[ids[i : i + step]]) for i in range(0, num_tiles, step)]
+    )
     return stacked
 
 
-def img_to_tiles(img, *args, **kwargs):
+def get_weighted_sample_ids(white_pcts, num_tiles):
+    tiles_ids = np.arange(len(white_pcts))
+    white_mask = white_pcts == 1.0
+    probas = np.empty_like(tiles_ids, dtype=float)
+    probas.fill(1 / len(white_pcts))
+    # zero fully white tiles probas
+    probas[white_mask] = 1e-8
+    wght_probas = probas / (white_pcts + 1e-8)
+    wght_probas /= wght_probas.sum()
+    ids = np.random.choice(tiles_ids, num_tiles, replace=False, p=wght_probas)
+    return ids
+
+
+def img_to_tiles(img, num_tiles=36, is_train=True, *args, **kwargs):
     # Put all together
     tiles = make_tiles(img)
-    if len(tiles) < 16:
+    if len(tiles) < num_tiles:
         return img
     white_pcts = np.array([pxl_percentage(tile) for tile in tiles])
-    gradient_ids = np.argsort(white_pcts)
+    if is_train:
+        gradient_ids = get_weighted_sample_ids(white_pcts, num_tiles)
+    else:
+        gradient_ids = np.argsort(white_pcts)
 
-    return stack_sorted(tiles, gradient_ids)
+    return stack_sorted(tiles, gradient_ids, num_tiles)
 
 
 class TilesTrainDataset(Dataset):
+    def __init__(self, df, is_train=True, transform=None, debug=CFG.debug):
+        self.df = df
+        self.labels = df[CFG.target_col].values
+        self.transform = transform
+        self.is_train = is_train
+        self.debug = debug
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        file_id = self.df[CFG.img_id_col].values[idx]
+        file_path = f"{PANDA_IMGS}/{file_id}.tiff"
+        image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+        # use stochastic tiles compose for train and deterministic for valid
+        image = img_to_tiles(image, is_train=self.is_train)
+        image = cv2.resize(
+            image, (CFG.img_height, CFG.img_width), interpolation=cv2.INTER_AREA
+        )
+
+        if self.transform:
+            augmented = self.transform(image=image)
+            image = augmented["image"]
+
+        label = self.labels[idx]
+
+        item = (image, label)
+        if self.debug:
+            item = (image, label, file_id)
+
+        return item
+
+
+class LazyTilesDataset(Dataset):
     def __init__(self, df, transform=None, debug=CFG.debug):
         self.df = df
         self.labels = df[CFG.target_col].values
@@ -175,9 +247,8 @@ class TilesTrainDataset(Dataset):
 
     def __getitem__(self, idx):
         file_id = self.df[CFG.img_id_col].values[idx]
-        file_path = f"{PANDA_IMGS}/{file_id}.tiff"
-        image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
-        image = img_to_tiles(image)
+        file_path = f"{TILES_IMGS}/{file_id}.png"
+        image = skimage.io.imread(file_path)
         image = cv2.resize(
             image, (CFG.img_height, CFG.img_width), interpolation=cv2.INTER_AREA
         )
@@ -209,7 +280,7 @@ class TilesTestDataset(Dataset):
             f"../input/prostate-cancer-grade-assessment/test_images/{file_id}.tiff"
         )
         image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
-        image = img_to_tiles(image)
+        image = img_to_tiles(image, is_train=False)
         image = cv2.resize(
             image, (CFG.img_height, CFG.img_width), interpolation=cv2.INTER_AREA
         )
