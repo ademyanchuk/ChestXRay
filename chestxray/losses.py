@@ -13,7 +13,7 @@ class SmoothLabelCritierion(nn.Module):
     def __init__(self, label_smoothing=0.0):
         super(SmoothLabelCritierion, self).__init__()
         self.label_smoothing = label_smoothing
-        self.LogSoftmax = nn.LogSoftmax()
+        self.LogSoftmax = nn.LogSoftmax(dim=1)
 
         # When label smoothing is turned on, KL-divergence is minimized
         # If label smoothing value is set to zero, the loss
