@@ -16,18 +16,18 @@ PANDA_IMGS = PANDA_PATH / "train_images"
 PANDA_MASKS = PANDA_PATH / "train_label_masks"
 TRAIN_CSV = PANDA_PATH / "train.csv"
 
-TILES_IMGS = PANDA_PATH / "tiles_layer1"
+TILES_IMGS = PANDA_PATH / "tiles32x128x1"
 
 
 # PANDA competition config
 class CFG:
     debug = False
     use_amp = True
-    img_height = 512
-    img_width = 512
-    lr = 1e-4
-    batch_size = 16
-    epoch = 50
+    img_height = 768
+    img_width = 768
+    lr = 1e-4 * 0.5
+    batch_size = 8
+    epoch = 30
     seed = 1982
     target_size = 6
     img_id_col = "image_id"
