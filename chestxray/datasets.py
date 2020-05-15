@@ -8,8 +8,8 @@ import skimage.io
 import torch
 from albumentations import Compose
 from albumentations import Flip
-from albumentations import GaussNoise
-from albumentations import HueSaturationValue
+from albumentations import GaussNoise  # noqa
+from albumentations import HueSaturationValue  # noqa
 from albumentations import Normalize
 from albumentations import RandomBrightnessContrast
 from albumentations import ShiftScaleRotate
@@ -25,9 +25,9 @@ augs_dict = {
     "heavy": Compose(
         [
             Flip(),
-            GaussNoise(),
+            # GaussNoise(),
             RandomBrightnessContrast(),
-            HueSaturationValue(),
+            # HueSaturationValue(),
             ShiftScaleRotate(
                 shift_limit=0.0625, scale_limit=0.2, rotate_limit=45, p=0.3
             ),
@@ -59,6 +59,8 @@ no_aug = Compose(
 
 
 def get_transforms(*, data, aug="light"):
+    """Choose mode `train` or `valid` and aug type:
+    `light` or `heavy`"""
 
     assert data in ("train", "valid")
     assert aug in ("light", "heavy")
@@ -189,7 +191,7 @@ def get_weighted_sample_ids(white_pcts, num_tiles):
 
 def img_to_tiles(img, num_tiles=36, is_train=True, *args, **kwargs):
     # Put all together
-    tiles = make_tiles(img)
+    tiles = make_tiles(img, **kwargs)
     if len(tiles) < num_tiles:
         return img
     white_pcts = np.array([pxl_percentage(tile) for tile in tiles])
@@ -217,7 +219,13 @@ class TilesTrainDataset(Dataset):
         file_path = f"{PANDA_IMGS}/{file_id}.tiff"
         image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
         # use stochastic tiles compose for train and deterministic for valid
-        image = img_to_tiles(image, is_train=self.is_train)
+        image = img_to_tiles(
+            image,
+            num_tiles=CFG.num_tiles,
+            is_train=self.is_train,
+            tile_h=CFG.tile_sz,
+            tile_w=CFG.tile_sz,
+        )
         image = cv2.resize(
             image, (CFG.img_height, CFG.img_width), interpolation=cv2.INTER_AREA
         )
@@ -267,9 +275,10 @@ class LazyTilesDataset(Dataset):
 
 
 class TilesTestDataset(Dataset):
-    def __init__(self, df, transform=None):
+    def __init__(self, df, is_train=True, transform=None):
         self.df = df
         self.transform = transform
+        self.is_train = is_train
 
     def __len__(self):
         return len(self.df)
@@ -280,7 +289,13 @@ class TilesTestDataset(Dataset):
             f"../input/prostate-cancer-grade-assessment/test_images/{file_id}.tiff"
         )
         image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
-        image = img_to_tiles(image, is_train=False)
+        image = img_to_tiles(
+            image,
+            num_tiles=CFG.num_tiles,
+            is_train=self.is_train,
+            tile_h=CFG.tile_sz,
+            tile_w=CFG.tile_sz,
+        )
         image = cv2.resize(
             image, (CFG.img_height, CFG.img_width), interpolation=cv2.INTER_AREA
         )
