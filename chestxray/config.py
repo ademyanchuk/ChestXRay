@@ -21,18 +21,33 @@ TILES_IMGS = PANDA_PATH / "tiles32x128x1"
 
 # PANDA competition config
 class CFG:
+    # overall
     debug = False
-    use_amp = True
+    seed = 1982
+    # data
     img_height = 768
     img_width = 768
-    lr = 1e-4 * 0.5
-    batch_size = 8
-    epoch = 30
-    seed = 1982
     target_size = 6
     img_id_col = "image_id"
     target_col = "isup_grade"
-    n_fold = 4
     tiff_layer = 1
-    loss = "ls_soft_ce"
     stoch_sample = True
+    num_tiles = 36
+    tile_sz = 128
+    batch_size = 16
+    use_lazy = True
+    aug_type = "light"
+    # model
+    finetune = "1stage"
+    model_cls = "deep"
+    schedule_type = "one_cycle"
+    # loss
+    loss = "ls_soft_ce"
+    # optim
+    lr = 5e-5
+    # schedule
+    rlopp = 3  # learnig rate on plateu scheduler patience
+    # training
+    epoch = 70
+    n_fold = 4
+    use_amp = True
