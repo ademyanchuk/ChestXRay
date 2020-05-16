@@ -1,5 +1,7 @@
 import torch
+import torch.nn.functional as F
 from torch import nn
+from torch.nn.modules.loss import _WeightedLoss
 
 
 # from https://www.kaggle.com/c/bengaliai-cv19/discussion/130811
@@ -96,3 +98,33 @@ class LabelSmoothSoftmaxCEV1(nn.Module):
             loss = loss.sum()
 
         return loss
+
+
+# Online Hard Examples Mining loss
+class TopkCrossEntropy(_WeightedLoss):
+    def __init__(
+        self,
+        top_k=0.7,
+        weight=None,
+        size_average=None,
+        ignore_index=-100,
+        reduce=None,
+        reduction="none",
+    ):
+        super(TopkCrossEntropy, self).__init__(weight, size_average, reduce, reduction)
+
+        self.ignore_index = ignore_index
+        self.top_k = top_k
+        self.loss = nn.NLLLoss(
+            weight=self.weight, ignore_index=self.ignore_index, reduction="none"
+        )
+
+    def forward(self, input, target):
+        loss = self.loss(F.log_softmax(input, dim=1), target)
+        # print(loss)
+
+        if self.top_k == 1:
+            return torch.mean(loss)
+        else:
+            valid_loss, idxs = torch.topk(loss, int(self.top_k * loss.size()[0]))
+            return torch.mean(valid_loss)
