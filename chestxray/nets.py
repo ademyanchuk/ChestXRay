@@ -88,11 +88,12 @@ def make_RN50_cls(pretrained=True):
                     ("cls_lin1", nn.Linear(num_ftrs, 512)),
                     ("cls_relu", nn.ReLU(inplace=True)),
                     ("cls_bn", nn.BatchNorm1d(512)),
+                    ("drop", nn.Dropout(0.5)),
                     ("cls_lin2", nn.Linear(512, CFG.target_size)),
                 ]
             )
         )
-    else:
+    elif CFG.model_cls == "one_layer":
         model_ft.fc = nn.Linear(num_ftrs, CFG.target_size)
     return model_ft
 
