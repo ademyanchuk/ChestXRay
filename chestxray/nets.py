@@ -1,4 +1,6 @@
 """Model architectures definitions"""
+from collections import OrderedDict
+
 import torch.nn as nn
 from torchvision import models
 
@@ -79,8 +81,28 @@ class TinyV2ConvNet(nn.Module):
 def make_RN50_cls(pretrained=True):
     model_ft = models.resnet50(pretrained=pretrained)
     num_ftrs = model_ft.fc.in_features
-    model_ft.fc = nn.Linear(num_ftrs, CFG.target_size)
+    if CFG.model_cls == "deep":
+        model_ft.fc = nn.Sequential(
+            OrderedDict(
+                [
+                    ("cls_lin1", nn.Linear(num_ftrs, 512)),
+                    ("cls_relu", nn.ReLU(inplace=True)),
+                    ("cls_bn", nn.BatchNorm1d(512)),
+                    ("cls_lin2", nn.Linear(512, CFG.target_size)),
+                ]
+            )
+        )
+    else:
+        model_ft.fc = nn.Linear(num_ftrs, CFG.target_size)
     return model_ft
+
+
+def freeze_botom(model):
+    for name, group in model.named_children():
+        if name in ["conv1", "bn1", "relu", "maxpool", "layer1", "layer2"]:
+            print(f"Freezing layer {name}..")
+            for p in group.parameters():
+                p.requires_grad = False
 
 
 def make_RN18_cls(pretrained=True):
