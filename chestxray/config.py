@@ -16,7 +16,7 @@ PANDA_IMGS = PANDA_PATH / "train_images"
 PANDA_MASKS = PANDA_PATH / "train_label_masks"
 TRAIN_CSV = PANDA_PATH / "train.csv"
 
-TILES_IMGS = PANDA_PATH / "tiles144x64x1"
+TILES_IMGS = PANDA_PATH / "tiles36x128x1"  # "tiles144x64x1" or "tiles36x128x1"
 
 
 # PANDA competition config
@@ -32,24 +32,24 @@ class CFG:
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
-    num_tiles = 144
-    tile_sz = 64
+    num_tiles = 36
+    tile_sz = 128
     batch_size = 8
-    use_lazy = True
+    use_lazy = False
     aug_type = "light"
     # model
     finetune = False  # or "1stage"
-    model_cls = "deep"  # "one_layer" or "deep"
-    schedule_type = "cawr"  # "one_cycle", "reduce_on_plateau" or "cawr"
+    model_cls = "one_layer"  # "one_layer" or "deep"
+    schedule_type = "reduce_on_plateau"  # "one_cycle", "reduce_on_plateau" or "cawr"
     cawr_T = 1
     cawr_Tmult = 2
     # loss
     loss = "ls_soft_ce"
     # optim
-    optim = "sgd"  # "adam" or "sgd"
-    lr = 0.1 * batch_size / 512 if optim == "sgd" else 5e-5
+    optim = "radam"  # "adam", "sgd" or "radam"
+    lr = 0.1 * batch_size / 512 if optim == "sgd" else 3e-4
     # schedule
-    rlopp = 3  # learnig rate on plateu scheduler patience
+    rlopp = 1  # learnig rate on plateu scheduler patience
     # training
     epoch = 50
     n_fold = 4
