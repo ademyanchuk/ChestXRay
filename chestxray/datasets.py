@@ -2,17 +2,11 @@
 import functools
 import operator
 
+import albumentations as A
 import cv2
 import numpy as np
 import skimage.io
 import torch
-from albumentations import Compose
-from albumentations import Flip
-from albumentations import GaussNoise  # noqa
-from albumentations import HueSaturationValue  # noqa
-from albumentations import Normalize
-from albumentations import RandomBrightnessContrast
-from albumentations import ShiftScaleRotate
 from albumentations.pytorch import ToTensorV2
 from torch.utils.data import Dataset
 
@@ -22,39 +16,75 @@ from chestxray.config import TILES_IMGS
 
 
 augs_dict = {
-    "heavy": Compose(
+    "heavy": A.Compose(
         [
-            Flip(),
-            # GaussNoise(),
-            RandomBrightnessContrast(),
-            # HueSaturationValue(),
-            ShiftScaleRotate(
-                shift_limit=0.0625, scale_limit=0.2, rotate_limit=45, p=0.3
+            A.OneOf(
+                [
+                    A.ShiftScaleRotate(
+                        shift_limit=0.05,
+                        scale_limit=0.1,
+                        rotate_limit=15,
+                        border_mode=cv2.BORDER_CONSTANT,
+                        value=(255, 255, 255),
+                    ),
+                    A.OpticalDistortion(
+                        distort_limit=0.11,
+                        shift_limit=0.15,
+                        border_mode=cv2.BORDER_CONSTANT,
+                        value=(255, 255, 255),
+                    ),
+                    A.NoOp(),
+                ]
             ),
+            A.RandomSizedCrop(
+                min_max_height=(int(CFG.img_height * 0.75), CFG.img_height),
+                height=CFG.img_height,
+                width=CFG.img_width,
+                p=0.3,
+            ),
+            A.OneOf(
+                [
+                    A.RandomBrightnessContrast(
+                        brightness_limit=0.3, contrast_limit=0.3
+                    ),
+                    A.RandomGamma(gamma_limit=(50, 150)),
+                    A.NoOp(),
+                ]
+            ),
+            A.OneOf(
+                [
+                    A.RGBShift(r_shift_limit=20, b_shift_limit=15, g_shift_limit=15),
+                    A.HueSaturationValue(hue_shift_limit=5, sat_shift_limit=5),
+                    A.NoOp(),
+                ]
+            ),
+            A.OneOf([A.CLAHE(), A.NoOp()]),
+            A.HorizontalFlip(p=0.5),
+            A.VerticalFlip(p=0.5),
             # This transformation first / 255. -> scale to [0,1] and
             # then - mean and / by std
-            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
+            A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
             # Convert to torch tensor and swap axis to make Chanel first
             ToTensorV2(),
         ]
     ),
-    "light": Compose(
+    "light": A.Compose(
         [
-            Flip(),
-            ShiftScaleRotate(
+            A.Flip(),
+            A.ShiftScaleRotate(
                 shift_limit=0.0625, scale_limit=0.2, rotate_limit=45, p=0.3
             ),
             # This transformation first / 255. -> scale to [0,1] and
             # then - mean and / by std
-            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
+            A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
             # Convert to torch tensor and swap axis to make Chanel first
             ToTensorV2(),
         ]
     ),
 }
 
-no_aug = Compose(
-    [Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],), ToTensorV2()]
+no_aug = A.Compose(
+    [A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],), ToTensorV2()]
 )
 
 
