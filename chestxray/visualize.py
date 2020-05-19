@@ -25,26 +25,30 @@ def show_from_ids(ids, df, img_path=PANDA_IMGS):
 
 
 # Batch reversed
-def show_batch(image_batch, label_batch):
+def show_batch(image_batch, label_batch, *args, **kwargs):
     plt.figure(figsize=(16, 16))
     for n in range(8):
         ax = plt.subplot(2, 4, n + 1)  # noqa
         img = image_batch[n]
         # Reverse all preprocessing of TrainDataset
-        img = reverse_show_img(img)
+        img = reverse_show_img(img, *args, **kwargs)
         plt.imshow(img)
         plt.title(label_batch[n].numpy())
         plt.axis("off")
 
 
 # one img tensor reversed
-def reverse_show_img(img):
+def reverse_show_img(img, denorm=True):
+    # check if sequence
+    if len(img.shape) > 3:
+        img = img[0]
     # Reverse all preprocessing
     img = img.numpy().transpose((1, 2, 0))
-    mean = np.array([0.485, 0.456, 0.406])
-    std = np.array([0.229, 0.224, 0.225])
-    img = std * img + mean
-    img = (img * 255).astype(np.uint8)
+    if denorm:
+        mean = np.array([0.485, 0.456, 0.406])
+        std = np.array([0.229, 0.224, 0.225])
+        img = std * img + mean
+        img = (img * 255).astype(np.uint8)
     return img
 
 
@@ -68,6 +72,16 @@ def output_to_probs(output):
     _, preds_np = torch.max(out_data, 1)
     preds = np.squeeze(preds_np)
     return preds, [F.softmax(el, dim=0)[i].item() for i, el in zip(preds, out_data)]
+
+
+def text_classes_preds(output, labels):
+    preds, probs = output_to_probs(output)
+    return ";".join(
+        [
+            f"Im: {i}, label: {labels[i]}, pred: {preds[i]}, prob: {probs[i]}"
+            for i in range(len(labels))
+        ]
+    )
 
 
 def plot_classes_preds(output, images, labels):
