@@ -13,9 +13,11 @@ def trainable_params(model):
 
 
 # Loss @ Init
-def cce_loss_at_init(model, num_classes, criterion=nn.CrossEntropyLoss()):
-    input = torch.randn(64, 3, 256, 256, requires_grad=True)
-    target = torch.empty(64, dtype=torch.long).random_(num_classes)
+def cce_loss_at_init(
+    model, num_classes, inp_shape=(64, 3, 256, 256), criterion=nn.CrossEntropyLoss()
+):
+    input = torch.randn(*inp_shape, requires_grad=True)
+    target = torch.empty(inp_shape[0], dtype=torch.long).random_(num_classes)
     model.eval()
     output = model(input)
     loss = criterion(output, target)
@@ -39,8 +41,8 @@ def init_last_layer_bias(model, cls_probas):
 
 # initialize bias of the final layer to represent class probas we have in data
 # check if it works
-def check_final_linear_bias_init(model, cls_probas):
-    input = torch.randn(64, 3, 256, 256, requires_grad=False)
+def check_final_linear_bias_init(model, cls_probas, inp_shape=(64, 3, 256, 256)):
+    input = torch.randn(*inp_shape, requires_grad=False)
     model = init_last_layer_bias(model, cls_probas)
     model.eval()
     output = model(input)
