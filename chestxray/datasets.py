@@ -400,3 +400,30 @@ class PatchTrainDataset(Dataset):
             item = (patch, label, file_id)
 
         return item
+
+
+class PatchTestDataset(Dataset):
+    def __init__(self, df, transform=None):
+        self.df = df
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        file_id = self.df[CFG.img_id_col].values[idx]
+        file_path = (
+            f"../input/prostate-cancer-grade-assessment/test_images/{file_id}.tiff"
+        )
+        image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+
+        patch, coord = make_patch(image, patch_size=256, num_patch=12)
+        patch = patch.astype(np.float32) / 255
+        patch = patch.transpose(0, 3, 1, 2)
+        patch = np.ascontiguousarray(patch)
+
+        #         if self.transform:
+        #             augmented = self.transform(image=image)
+        #             image = augmented["image"]
+
+        return patch
