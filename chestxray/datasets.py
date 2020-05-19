@@ -335,3 +335,68 @@ class TilesTestDataset(Dataset):
             image = augmented["image"]
 
         return image
+
+
+# Patch Version of Dataset from https://www.kaggle.com/hengck23/kernel16867b0575
+def make_patch(image, patch_size, num_patch):
+    h, w = image.shape[:2]
+    s = patch_size
+
+    pad_x = int(patch_size * np.ceil(w / patch_size) - w)
+    pad_y = int(patch_size * np.ceil(h / patch_size) - h)
+    image = cv2.copyMakeBorder(
+        image, 0, pad_y, 0, pad_x, borderType=cv2.BORDER_CONSTANT, value=(255, 255, 255)
+    )
+    h, w = image.shape[:2]
+
+    patch = image.reshape(h // s, s, w // s, s, 3)
+    patch = patch.transpose(0, 2, 1, 3, 4).reshape(-1, s, s, 3)
+
+    n = len(patch)
+    index = np.argsort(patch.reshape(n, -1).sum(-1))[:num_patch]
+
+    y = s * (index // (w // s))
+    x = s * (index % (w // s))
+    coord = np.stack([x, y, x + s, y + s]).T
+
+    patch = patch[index]
+    if len(patch) < num_patch:
+        n = num_patch - len(patch)
+        patch = np.concatenate(
+            [patch, np.full((n, patch_size, patch_size, 3), 255, dtype=np.uint8)], 0
+        )
+        coord = np.concatenate([coord, np.full((n, 4), -1)], 0)
+    return patch, coord
+
+
+class PatchTrainDataset(Dataset):
+    def __init__(self, df, transform=None, debug=CFG.debug):
+        self.df = df
+        self.labels = df[CFG.target_col].values
+        self.transform = transform
+        self.debug = debug
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        file_id = self.df[CFG.img_id_col].values[idx]
+        file_path = f"{PANDA_IMGS}/{file_id}.tiff"
+        image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+
+        patch, coord = make_patch(image, patch_size=256, num_patch=12)
+        patch = patch.astype(np.float32) / 255
+        patch = patch.transpose(0, 3, 1, 2)
+        patch = np.ascontiguousarray(patch)
+
+        #         if self.transform:
+        #             augmented = self.transform(image=image)
+        #             image = augmented["image"]
+
+        label = self.labels[idx]
+
+        item = (patch, label)
+        if self.debug:
+            item = (patch, label, file_id)
+
+        return item
