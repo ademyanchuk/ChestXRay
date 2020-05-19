@@ -25,8 +25,8 @@ class CFG:
     debug = False
     seed = 1982
     # data
-    img_height = 768
-    img_width = 768
+    img_height = 256
+    img_width = 256
     target_size = 6
     img_id_col = "image_id"
     target_col = "isup_grade"
@@ -34,9 +34,9 @@ class CFG:
     stoch_sample = True
     num_tiles = 36
     tile_sz = 128
-    batch_size = 8
-    use_lazy = False
-    aug_type = "light"
+    batch_size = 6
+    dataset = "patch"  # "patch", "tiles" or "lazy"
+    aug_type = "light"  # "light" or "heavy"
     # model
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
@@ -51,6 +51,6 @@ class CFG:
     # schedule
     rlopp = 1  # learnig rate on plateu scheduler patience
     # training
-    epoch = 50
+    epoch = 70
     n_fold = 4
     use_amp = True
