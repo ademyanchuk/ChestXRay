@@ -111,3 +111,38 @@ def make_RN18_cls(pretrained=True):
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Linear(num_ftrs, CFG.target_size)
     return model_ft
+
+
+# Model to work with Patches
+class Model(nn.Module):
+    def __init__(self, arch="resnet50", n=CFG.target_size, pretrained=True):
+        super().__init__()
+        assert arch in ["resnet50"]
+        model = models.resnet50(pretrained=pretrained)
+        self.encoder = nn.Sequential(*list(model.children())[:-2])
+        num_ftrs = list(model.children())[-1].in_features
+        self.head = nn.Sequential(
+            OrderedDict(
+                [
+                    ("cls_avgpool", nn.AdaptiveAvgPool2d(output_size=(1, 1))),
+                    ("cls_flat", nn.Flatten()),
+                    ("cls_linear", nn.Linear(num_ftrs, CFG.target_size)),
+                ]
+            )
+        )
+
+    def forward(self, x):
+        shape = x.shape
+        num_patch = len(x[0])
+        x = x.view(-1, shape[2], shape[3], shape[4])  # x -> bs*num_patch x C x H x W
+        x = self.encoder(x)  # x -> bs*num_patch x C(Maps) x H(Maps) x W(Maps)
+        shape = x.shape
+        # concatenate the output for tiles into a single map
+        x = (
+            x.view(-1, num_patch, shape[1], shape[2], shape[3])
+            .permute(0, 2, 1, 3, 4)
+            .contiguous()
+            .view(-1, shape[1], shape[2] * num_patch, shape[3])
+        )
+        x = self.head(x)
+        return x
