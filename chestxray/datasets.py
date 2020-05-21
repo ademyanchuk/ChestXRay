@@ -63,22 +63,26 @@ augs_dict = {
             A.VerticalFlip(p=0.5),
             # This transformation first / 255. -> scale to [0,1] and
             # then - mean and / by std
-            A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
-            # Convert to torch tensor and swap axis to make Chanel first
-            ToTensorV2(),
+            # A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
+            # # Convert to torch tensor and swap axis to make Chanel first
+            # ToTensorV2(),
         ]
     ),
     "light": A.Compose(
         [
             A.Flip(),
             A.ShiftScaleRotate(
-                shift_limit=0.0625, scale_limit=0.2, rotate_limit=45, p=0.3
-            ),
+                shift_limit=0.05,
+                scale_limit=0.1,
+                rotate_limit=15,
+                border_mode=cv2.BORDER_CONSTANT,
+                value=(255, 255, 255),
+            )
             # This transformation first / 255. -> scale to [0,1] and
             # then - mean and / by std
-            A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
-            # Convert to torch tensor and swap axis to make Chanel first
-            ToTensorV2(),
+            # A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
+            # # Convert to torch tensor and swap axis to make Chanel first
+            # ToTensorV2(),
         ]
     ),
 }
@@ -99,7 +103,7 @@ def get_transforms(*, data, aug="light"):
         return augs_dict[aug]
 
     elif data == "valid":
-        return no_aug
+        return None
 
 
 class ZeroDataset(Dataset):
@@ -384,14 +388,18 @@ class PatchTrainDataset(Dataset):
         file_path = f"{PANDA_IMGS}/{file_id}.tiff"
         image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
 
-        patch, coord = make_patch(image, patch_size=256, num_patch=12)
+        patch, coord = make_patch(
+            image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
+        )
+        # augment sequence
+        if self.transform:
+            for p in patch:
+                augmented = self.transform(image=p)
+                p = augmented["image"]
+
         patch = patch.astype(np.float32) / 255
         patch = patch.transpose(0, 3, 1, 2)
         patch = np.ascontiguousarray(patch)
-
-        #         if self.transform:
-        #             augmented = self.transform(image=image)
-        #             image = augmented["image"]
 
         label = self.labels[idx]
 
@@ -417,13 +425,17 @@ class PatchTestDataset(Dataset):
         )
         image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
 
-        patch, coord = make_patch(image, patch_size=256, num_patch=12)
+        patch, coord = make_patch(
+            image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
+        )
+        # augment sequence
+        if self.transform:
+            for p in patch:
+                augmented = self.transform(image=p)
+                p = augmented["image"]
+
         patch = patch.astype(np.float32) / 255
         patch = patch.transpose(0, 3, 1, 2)
         patch = np.ascontiguousarray(patch)
-
-        #         if self.transform:
-        #             augmented = self.transform(image=image)
-        #             image = augmented["image"]
 
         return patch
