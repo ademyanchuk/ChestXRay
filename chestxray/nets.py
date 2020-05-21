@@ -1,10 +1,28 @@
 """Model architectures definitions"""
 from collections import OrderedDict
 
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torchvision import models
 
 from chestxray.config import CFG
+
+IMAGE_RGB_MEAN = [0.485, 0.456, 0.406]
+IMAGE_RGB_STD = [0.229, 0.224, 0.225]
+
+
+class RGB(nn.Module):
+    def __init__(self,):
+        super(RGB, self).__init__()
+        self.register_buffer("mean", torch.zeros(1, 3, 1, 1))
+        self.register_buffer("std", torch.ones(1, 3, 1, 1))
+        self.mean.data = torch.FloatTensor(IMAGE_RGB_MEAN).view(self.mean.shape)
+        self.std.data = torch.FloatTensor(IMAGE_RGB_STD).view(self.std.shape)
+
+    def forward(self, x):
+        x = (x - self.mean) / self.std
+        return x
 
 
 # Convolutional neural network (two convolutional layers) - tiny ConvNet
@@ -114,35 +132,50 @@ def make_RN18_cls(pretrained=True):
 
 
 # Model to work with Patches
+def aggregate(x, batch_size, num_patch):
+    _, C, H, W = x.shape
+    x = x.view(batch_size, num_patch, C, H, W)
+    x = x.permute(0, 2, 1, 3, 4).reshape(batch_size, C, num_patch * H, W)
+
+    avg = F.adaptive_avg_pool2d(x, 1)
+    max_ = F.adaptive_max_pool2d(x, 1)
+    x = torch.cat([avg, max_], 1).view(batch_size, -1)
+    return x
+
+
 class Model(nn.Module):
     def __init__(self, arch="resnet50", n=CFG.target_size, pretrained=True):
         super().__init__()
-        assert arch in ["resnet50"]
-        model = models.resnet50(pretrained=pretrained)
+        assert arch in ["resnet50", "resnet34"]
+        model_dict = {
+            "resnet50": models.resnet50,
+            "resnet34": models.resnet34,
+        }
+
+        model = model_dict[arch](pretrained=pretrained)
+
+        self.rgb = RGB()
         self.encoder = nn.Sequential(*list(model.children())[:-2])
         num_ftrs = list(model.children())[-1].in_features
         self.head = nn.Sequential(
             OrderedDict(
                 [
-                    ("cls_avgpool", nn.AdaptiveAvgPool2d(output_size=(1, 1))),
-                    ("cls_flat", nn.Flatten()),
-                    ("cls_linear", nn.Linear(num_ftrs, CFG.target_size)),
+                    ("cls_fc", nn.Linear(2 * num_ftrs, 512)),
+                    ("cls_bn", nn.BatchNorm1d(512)),
+                    ("cls_relu", nn.ReLU(inplace=True)),
+                    ("cls_logit", nn.Linear(512, CFG.target_size)),
                 ]
             )
         )
+        del model
 
     def forward(self, x):
-        shape = x.shape
-        num_patch = len(x[0])
-        x = x.view(-1, shape[2], shape[3], shape[4])  # x -> bs*num_patch x C x H x W
+        batch_size, num_patch, C, H, W = x.shape
+
+        x = x.view(-1, C, H, W)  # x -> bs*num_patch x C x H x W
+        x = self.rgb(x)
         x = self.encoder(x)  # x -> bs*num_patch x C(Maps) x H(Maps) x W(Maps)
-        shape = x.shape
-        # concatenate the output for tiles into a single map
-        x = (
-            x.view(-1, num_patch, shape[1], shape[2], shape[3])
-            .permute(0, 2, 1, 3, 4)
-            .contiguous()
-            .view(-1, shape[1], shape[2] * num_patch, shape[3])
-        )
+
+        x = aggregate(x, batch_size, num_patch)
         x = self.head(x)
         return x
