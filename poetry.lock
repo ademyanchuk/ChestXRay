@@ -39,6 +39,7 @@ version = "0.1"
 reference = "cf50dc7c031295360c246a72ac03d22cdbb96354"
 type = "git"
 url = "https://github.com/NVIDIA/apex"
+
 [[package]]
 category = "main"
 description = "A small Python module for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
@@ -1471,6 +1472,20 @@ numpy = "*"
 
 [[package]]
 category = "main"
+description = "Pytorch implementation of the learning rate range test"
+name = "torch-lr-finder"
+optional = false
+python-versions = ">=2.7"
+version = "0.1.5"
+
+[package.dependencies]
+matplotlib = "*"
+numpy = "*"
+torch = ">=0.4.1"
+tqdm = "*"
+
+[[package]]
+category = "main"
 description = "image and video datasets and models for torch deep learning"
 name = "torchvision"
 optional = false
@@ -1635,7 +1650,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "c80f52d65ba24232e0333cf05fbd74c3abd08a3c88ec62c04fa548d2aa992342"
+content-hash = "84f69206fbe2558d47451132081625fad849e186a048f52d264888992ab03ef9"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -2508,6 +2523,10 @@ torch = [
     {file = "torch-1.5.0-cp37-none-macosx_10_9_x86_64.whl", hash = "sha256:3cc72d36eaeda96488e3a29373f739b887338952417b3e1620871063bf5d14d2"},
     {file = "torch-1.5.0-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:ecdc2ea4011e3ec04937b6b9e803ab671c3ac04e81b1df20354e01453e508b2f"},
     {file = "torch-1.5.0-cp38-none-macosx_10_9_x86_64.whl", hash = "sha256:cb4412c6b00117ab5e014d07dac45b87f1e918e31fbb849e7e39f1f9140fff59"},
+]
+torch-lr-finder = [
+    {file = "torch-lr-finder-0.1.5.tar.gz", hash = "sha256:3ef483580661f8926cbff4189ae4be16b9142aadb6a7dddb4d1e00e5b2e34369"},
+    {file = "torch_lr_finder-0.1.5-py3-none-any.whl", hash = "sha256:97bc4199b74bea703e0d5963b0ad0a68eeedc0e3496777bd3273c6eb580da52a"},
 ]
 torchvision = [
     {file = "torchvision-0.6.0-cp35-cp35m-macosx_10_6_x86_64.whl", hash = "sha256:0ea04a7e0f64599c158d36da01afd0cb3bc49033d2a145be4eb80c17c4c0482b"},
