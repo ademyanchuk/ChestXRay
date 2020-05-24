@@ -8,22 +8,6 @@ from torchvision import models
 
 from chestxray.config import CFG
 
-IMAGE_RGB_MEAN = [0.485, 0.456, 0.406]
-IMAGE_RGB_STD = [0.229, 0.224, 0.225]
-
-
-class RGB(nn.Module):
-    def __init__(self,):
-        super(RGB, self).__init__()
-        self.register_buffer("mean", torch.zeros(1, 3, 1, 1))
-        self.register_buffer("std", torch.ones(1, 3, 1, 1))
-        self.mean.data = torch.FloatTensor(IMAGE_RGB_MEAN).view(self.mean.shape)
-        self.std.data = torch.FloatTensor(IMAGE_RGB_STD).view(self.std.shape)
-
-    def forward(self, x):
-        x = (x - self.mean) / self.std
-        return x
-
 
 # Convolutional neural network (two convolutional layers) - tiny ConvNet
 class TinyConvNet(nn.Module):
@@ -143,7 +127,40 @@ def aggregate(x, batch_size, num_patch):
     return x
 
 
-class Model(nn.Module):
+class TilesModel(nn.Module):
+    def __init__(self, arch="resnet50", n=CFG.target_size, pretrained=True):
+        super().__init__()
+        assert arch in ["resnet50", "resnet34"]
+        model_dict = {
+            "resnet50": models.resnet50,
+            "resnet34": models.resnet34,
+        }
+
+        self.model = model_dict[arch](pretrained=pretrained)
+
+        # self.rgb = RGB()
+        num_ftrs = self.model.fc.in_features
+        if CFG.model_cls == "deep":
+            self.model.fc = nn.Sequential(
+                OrderedDict(
+                    [
+                        ("cls_lin1", nn.Linear(num_ftrs, 512)),
+                        ("cls_relu", nn.ReLU(inplace=True)),
+                        ("cls_bn", nn.BatchNorm1d(512)),
+                        ("cls_lin2", nn.Linear(512, CFG.target_size)),
+                    ]
+                )
+            )
+        elif CFG.model_cls == "one_layer":
+            self.model.fc = nn.Linear(num_ftrs, CFG.target_size)
+
+    def forward(self, x):
+        # x = self.rgb(x)
+        x = self.model(x)
+        return x
+
+
+class PatchModel(nn.Module):
     def __init__(self, arch="resnet50", n=CFG.target_size, pretrained=True):
         super().__init__()
         assert arch in ["resnet50", "resnet34"]
@@ -154,7 +171,6 @@ class Model(nn.Module):
 
         model = model_dict[arch](pretrained=pretrained)
 
-        self.rgb = RGB()
         self.encoder = nn.Sequential(*list(model.children())[:-2])
         num_ftrs = list(model.children())[-1].in_features
         self.head = nn.Sequential(
@@ -173,7 +189,6 @@ class Model(nn.Module):
         batch_size, num_patch, C, H, W = x.shape
 
         x = x.view(-1, C, H, W)  # x -> bs*num_patch x C x H x W
-        x = self.rgb(x)
         x = self.encoder(x)  # x -> bs*num_patch x C(Maps) x H(Maps) x W(Maps)
 
         x = aggregate(x, batch_size, num_patch)
