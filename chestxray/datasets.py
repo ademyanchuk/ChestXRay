@@ -1,14 +1,16 @@
 """Data dispatching and processing related module"""
 import functools
 import operator
+from pathlib import Path
 
 import albumentations as A
 import cv2
+import h5py
 import numpy as np
 import skimage.io
 import torch
-from albumentations.pytorch import ToTensorV2
 from torch.utils.data import Dataset
+from torch.utils.data import Sampler
 
 from chestxray.config import CFG
 from chestxray.config import PANDA_IMGS
@@ -77,7 +79,7 @@ augs_dict = {
                 rotate_limit=15,
                 border_mode=cv2.BORDER_CONSTANT,
                 value=(255, 255, 255),
-            )
+            ),
             # This transformation first / 255. -> scale to [0,1] and
             # then - mean and / by std
             # A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
@@ -87,8 +89,8 @@ augs_dict = {
     ),
 }
 
-no_aug = A.Compose(
-    [A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],), ToTensorV2()]
+normalize = A.Compose(
+    [A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],)]
 )
 
 
@@ -238,11 +240,14 @@ def img_to_tiles(img, num_tiles=36, is_train=True, *args, **kwargs):
 
 
 class TilesTrainDataset(Dataset):
-    def __init__(self, df, is_train=True, transform=None, debug=CFG.debug):
+    def __init__(
+        self, df, is_train=True, transform=None, suffix="tiff", debug=CFG.debug
+    ):
         self.df = df
         self.labels = df[CFG.target_col].values
         self.transform = transform
         self.is_train = is_train
+        self.suffix = suffix
         self.debug = debug
 
     def __len__(self):
@@ -250,8 +255,13 @@ class TilesTrainDataset(Dataset):
 
     def __getitem__(self, idx):
         file_id = self.df[CFG.img_id_col].values[idx]
-        file_path = f"{PANDA_IMGS}/{file_id}.tiff"
-        image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+        if self.suffix == "tiff":
+            file_path = f"{PANDA_IMGS}/{file_id}.{self.suffix}"
+            image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+        elif self.suffix == "jpeg":
+            file_path = f"{PANDA_IMGS}/{file_id}_1.{self.suffix}"
+            image = cv2.imread(str(file_path))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # use stochastic tiles compose for train and deterministic for valid
         image = img_to_tiles(
             image,
@@ -267,6 +277,10 @@ class TilesTrainDataset(Dataset):
         if self.transform:
             augmented = self.transform(image=image)
             image = augmented["image"]
+        normalized = normalize(image=image)
+        image = normalized["image"]
+
+        image = image.transpose(2, 0, 1)  # to Chanel first
 
         label = self.labels[idx]
 
@@ -374,10 +388,11 @@ def make_patch(image, patch_size, num_patch):
 
 
 class PatchTrainDataset(Dataset):
-    def __init__(self, df, transform=None, debug=CFG.debug):
+    def __init__(self, df, transform=None, suffix="tiff", debug=CFG.debug):
         self.df = df
         self.labels = df[CFG.target_col].values
         self.transform = transform
+        self.suffix = suffix
         self.debug = debug
 
     def __len__(self):
@@ -385,19 +400,26 @@ class PatchTrainDataset(Dataset):
 
     def __getitem__(self, idx):
         file_id = self.df[CFG.img_id_col].values[idx]
-        file_path = f"{PANDA_IMGS}/{file_id}.tiff"
-        image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+        if self.suffix == "tiff":
+            file_path = f"{PANDA_IMGS}/{file_id}.{self.suffix}"
+            image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+        elif self.suffix == "jpeg":
+            file_path = f"{PANDA_IMGS}/{file_id}_1.{self.suffix}"
+            image = cv2.imread(str(file_path))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         patch, coord = make_patch(
             image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
         )
         # augment sequence
         if self.transform:
-            for p in patch:
-                augmented = self.transform(image=p)
-                p = augmented["image"]
+            for i in range(len(patch)):
+                augmented = self.transform(image=patch[i])
+                patch[i] = augmented["image"]
 
-        patch = patch.astype(np.float32) / 255
+        normalized = normalize(image=patch)
+        patch = normalized["image"]
+
         patch = patch.transpose(0, 3, 1, 2)
         patch = np.ascontiguousarray(patch)
 
@@ -439,3 +461,93 @@ class PatchTestDataset(Dataset):
         patch = np.ascontiguousarray(patch)
 
         return patch
+
+
+class H5PatchDataset(Dataset):
+    """Represents an abstract HDF5 dataset.
+
+    Input params:
+        file_path: Path to the folder containing the dataset
+        (one or multiple HDF5 files).
+        fnames: h5 files to use.
+        data_cache_size: Number of HDF5 files that can be cached in
+        the cache (default=2).
+    """
+
+    def __init__(self, file_path, fnames, data_cache_size=2):
+        super().__init__()
+        self.data_cache_size = data_cache_size
+
+        # Collect all h5 file paths
+        p = Path(file_path)
+        assert p.is_dir()
+        h5files = [p / fname for fname in fnames]
+        if len(h5files) < 1:
+            raise RuntimeError("No hdf5 datasets found")
+        self.h5files = h5files
+
+        self._full_len, self._common_len = self._get_lengths()
+        self._cache = {}  # key - file idx in self.h5files, value - opened file
+
+    def _get_lengths(self):
+        lenghts = []
+        for h5file in self.h5files:
+            with h5py.File(f"{h5file}", "r") as file:
+                lenghts.append(len(file["/images"]))
+        return sum(lenghts), max(lenghts)
+
+    def _load_data(self, file_idx):
+        file = h5py.File(f"{self.h5files[file_idx]}", "r")
+        self._cache[file_idx] = file
+        # print(f"Add file {file_idx} to cache")
+
+        if len(self._cache) > self.data_cache_size:
+            # remove min as the sampler randomly took indexes from bins
+            # i.e. from (0:100), (100:200) and so on in sequence
+            remove_idx = min(self._cache)
+            self._cache[remove_idx].close()
+            self._cache.pop(remove_idx)
+
+    def _get_data(self, file_idx, effective_idx, group):
+        data = self._cache[file_idx][f"/{group}"][effective_idx]
+        return data
+
+    def __getitem__(self, index):
+        file_idx = index // self._common_len
+        if file_idx not in self._cache:
+            self._load_data(file_idx)
+
+        effective_idx = index - (file_idx * self._common_len)
+
+        patch = self._get_data(file_idx, effective_idx, "images")
+        patch = patch.astype(np.uint8)
+        normalized = normalize(image=patch)
+        patch = normalized["image"]
+
+        patch = patch.transpose(0, 3, 1, 2)
+        patch = np.ascontiguousarray(patch)
+
+        label = self._get_data(file_idx, effective_idx, "labels")
+        label = label.astype(np.int)
+        return patch, label
+
+    def __len__(self):
+        return self._full_len
+
+
+class SeqenceRandomSampler(Sampler):
+    def __init__(self, full_len, step):
+        self.full_len = full_len
+        self.step = step
+
+    def __iter__(self):
+        result = []
+        indices = list(range(self.full_len))
+        for i in range(0, self.full_len, self.step):
+            part = indices[i : i + self.step]
+            np.random.shuffle(part)
+            result.extend(part)
+        return (i for i in result)
+
+    def __len__(self):
+        return self.full_len
