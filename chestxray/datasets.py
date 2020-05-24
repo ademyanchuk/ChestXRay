@@ -521,10 +521,10 @@ class H5PatchDataset(Dataset):
 
         patch = self._get_data(file_idx, effective_idx, "images")
         patch = patch.astype(np.uint8)
-        normalized = normalize(image=patch)
+        normalized = normalize(image=patch)  # from albumentations
         patch = normalized["image"]
 
-        patch = patch.transpose(0, 3, 1, 2)
+        patch = patch.transpose(0, 3, 1, 2)  # to num_patch x C x H x W
         patch = np.ascontiguousarray(patch)
 
         label = self._get_data(file_idx, effective_idx, "labels")

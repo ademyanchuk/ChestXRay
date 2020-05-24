@@ -137,8 +137,6 @@ class TilesModel(nn.Module):
         }
 
         self.model = model_dict[arch](pretrained=pretrained)
-
-        # self.rgb = RGB()
         num_ftrs = self.model.fc.in_features
         if CFG.model_cls == "deep":
             self.model.fc = nn.Sequential(
@@ -155,7 +153,6 @@ class TilesModel(nn.Module):
             self.model.fc = nn.Linear(num_ftrs, CFG.target_size)
 
     def forward(self, x):
-        # x = self.rgb(x)
         x = self.model(x)
         return x
 
