@@ -16,8 +16,8 @@ def show_from_ids(ids, df, img_path=PANDA_IMGS):
     ]
     paths = [f"{img_path}/{img_id}.tiff" for img_id in ids]
     plt.figure(figsize=(16, 16))
-    for n in range(8):
-        ax = plt.subplot(2, 4, n + 1)  # noqa
+    for n in range(4):
+        ax = plt.subplot(2, 2, n + 1)  # noqa
         img = skimage.io.MultiImage(paths[n])[-1]
         plt.imshow(img)
         plt.title(labels[n])
@@ -27,8 +27,8 @@ def show_from_ids(ids, df, img_path=PANDA_IMGS):
 # Batch reversed
 def show_batch(image_batch, label_batch, *args, **kwargs):
     plt.figure(figsize=(16, 16))
-    for n in range(8):
-        ax = plt.subplot(2, 4, n + 1)  # noqa
+    for n in range(4):
+        ax = plt.subplot(2, 2, n + 1)  # noqa
         img = image_batch[n]
         # Reverse all preprocessing of TrainDataset
         img = reverse_show_img(img, *args, **kwargs)
