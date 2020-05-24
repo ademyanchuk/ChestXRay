@@ -22,34 +22,35 @@ TILES_IMGS = PANDA_PATH / "tiles36x128x1"  # "tiles144x64x1" or "tiles36x128x1"
 # PANDA competition config
 class CFG:
     # overall
-    debug = False
+    debug = True
     seed = 1982
     # data
-    img_height = 256
-    img_width = 256
+    img_height = 1024
+    img_width = 1024
     target_size = 6
     img_id_col = "image_id"
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
-    num_tiles = 36
-    tile_sz = 128
-    batch_size = 6
-    dataset = "patch"  # "patch", "tiles" or "lazy"
+    num_tiles = 16
+    tile_sz = 256
+    batch_size = 4
+    accum_step = 16  # effective batch size will be batch_size * accum_step
+    dataset = "hdf5"  # "patch", "tiles", "lazy", "hdf5"
     aug_type = "light"  # "light" or "heavy"
     # model
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
-    schedule_type = "reduce_on_plateau"  # "one_cycle", "reduce_on_plateau" or "cawr"
+    schedule_type = "none"  # "one_cycle", "reduce_on_plateau" or "cawr"
     cawr_T = 1
     cawr_Tmult = 2
     # loss
-    loss = "ls_soft_ce"
+    loss = "cce"  # "cce" or "ls_soft_ce"
     # optim
-    optim = "radam"  # "adam", "sgd" or "radam"
-    lr = 0.1 * batch_size / 512 if optim == "sgd" else 3e-4
+    optim = "adam"  # "adam", "sgd" or "radam"
+    lr = 0.001 if optim == "sgd" else 1e-4
     # schedule
-    rlopp = 1  # learnig rate on plateu scheduler patience
+    rlopp = 3  # learnig rate on plateu scheduler patience
     # training
     epoch = 70
     n_fold = 4
