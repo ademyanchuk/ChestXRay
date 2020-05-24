@@ -5,3 +5,6 @@ models/
 .env
 
 runs/
+
+# pytorch checkpoints
+*.pth
