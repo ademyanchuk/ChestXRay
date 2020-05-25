@@ -170,16 +170,25 @@ class PatchModel(nn.Module):
 
         self.encoder = nn.Sequential(*list(model.children())[:-2])
         num_ftrs = list(model.children())[-1].in_features
-        self.head = nn.Sequential(
-            OrderedDict(
-                [
-                    ("cls_fc", nn.Linear(2 * num_ftrs, 512)),
-                    ("cls_bn", nn.BatchNorm1d(512)),
-                    ("cls_relu", nn.ReLU(inplace=True)),
-                    ("cls_logit", nn.Linear(512, CFG.target_size)),
-                ]
+        if CFG.model_cls == "deep":
+            self.head = nn.Sequential(
+                OrderedDict(
+                    [
+                        ("cls_fc", nn.Linear(2 * num_ftrs, 512)),
+                        ("cls_bn", nn.BatchNorm1d(512)),
+                        ("cls_relu", nn.ReLU(inplace=True)),
+                        ("cls_logit", nn.Linear(512, CFG.target_size)),
+                    ]
+                )
             )
-        )
+        elif CFG.model_cls == "one_layer":
+            self.head = nn.Sequential(
+                OrderedDict(
+                    [
+                        ("cls_logit", nn.Linear(2 * num_ftrs, CFG.target_size)),
+                    ]
+                )
+            )
         del model
 
     def forward(self, x):
