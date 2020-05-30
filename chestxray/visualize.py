@@ -10,6 +10,25 @@ from chestxray.config import CFG
 from chestxray.config import PANDA_IMGS
 
 
+def show_from_ids_jpg(df, img_path, img_col, target_col, ids=None, label=None):
+    if ids is None and label is None:
+        print("Have to provide ids or label")
+        return
+    if label:
+        # sample ids with provided label
+        ids = df.loc[df[target_col] == label, img_col].sample(4)
+
+    labels = [df.loc[df[img_col] == img_id, target_col].values[0] for img_id in ids]
+    paths = [f"{img_path}/{img_id}.jpg" for img_id in ids]
+    plt.figure(figsize=(16, 16))
+    for n in range(4):
+        ax = plt.subplot(2, 2, n + 1)  # noqa
+        img = skimage.io.imread(paths[n])
+        plt.imshow(img)
+        plt.title(labels[n])
+        # plt.axis("off")
+
+
 def show_from_ids(ids, df, img_path=PANDA_IMGS):
     labels = [
         df.loc[df[CFG.img_id_col] == img_id, CFG.target_col].values[0] for img_id in ids
