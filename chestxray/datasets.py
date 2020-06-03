@@ -388,9 +388,10 @@ def make_patch(image, patch_size, num_patch):
 
 
 class PatchTrainDataset(Dataset):
-    def __init__(self, df, transform=None, suffix="tiff", debug=CFG.debug):
+    def __init__(self, df, is_train=True, transform=None, suffix="tiff", debug=CFG.debug):
         self.df = df
         self.labels = df[CFG.target_col].values
+        self.is_train = is_train
         self.transform = transform
         self.suffix = suffix
         self.debug = debug
@@ -411,6 +412,8 @@ class PatchTrainDataset(Dataset):
         patch, coord = make_patch(
             image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
         )
+        if self.is_train:
+            np.random.shuffle(patch)
         # augment sequence
         if self.transform:
             for i in range(len(patch)):
