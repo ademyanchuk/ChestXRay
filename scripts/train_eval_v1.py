@@ -40,16 +40,6 @@ from chestxray.visualize import plot_confusion_matrix
 from chestxray.visualize import reverse_show_img
 from chestxray.visualize import text_classes_preds
 
-# Local Imports
-# Paths
-# Competition related config
-# Misc
-# Datasets
-# Viz
-# Nets
-# Losses
-# Optim
-
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
@@ -344,6 +334,18 @@ def train_eval_loop(
             # add confusion matrix to TB
             conf_matrix_to_tb(val_epoch_labels, val_epoch_preds, val_global_step)
     # End of loop
+
+    # After finish collect hyperparams used, best metrics and write to TensorBoard
+    hparam_dict = {
+        key: val for key, val in CFG.__dict__.items() if not key.startswith("__")
+    }
+    metric_dict = {"hp/best_loss": best_val_loss, "hp/best_qwk": best_qwk}
+    writer.add_hparams(hparam_dict=hparam_dict, metric_dict=metric_dict)
+
+    # Get the current git commit hash to add it in Tensorboard, to know exp code version
+    label = subprocess.check_output(["git", "describe", "--always"]).strip()
+    writer.add_text("Git commit hash:", label.decode())
+
     return model, best_val_loss, best_qwk
 
 
@@ -577,12 +579,6 @@ if not CFG.debug and not CFG.resume:
         model_name=EXP_NAME,
     )
 
-    # After finish collect hyperparams used, best metrics and write to TensorBoard
-    hparam_dict = {
-        key: val for key, val in CFG.__dict__.items() if not key.startswith("__")
-    }
-    metric_dict = {"hp/best_loss": best_loss, "hp/best_qwk": best_qwk}
-    writer.add_hparams(hparam_dict=hparam_dict, metric_dict=metric_dict)
 
 if CFG.resume:
     # Resume Training
@@ -613,14 +609,3 @@ if CFG.resume:
         checkpoint=checkpoint,
         model_name=PREV_NAME,
     )
-
-    # After finish collect hyperparams used, best metrics and write to TensorBoard
-    hparam_dict = {
-        key: val for key, val in CFG.__dict__.items() if not key.startswith("__")
-    }
-    metric_dict = {"hp/best_loss": best_loss, "hp/best_qwk": best_qwk}
-    writer.add_hparams(hparam_dict=hparam_dict, metric_dict=metric_dict)
-
-# Get the current git commit hash to add it in Tensorboard, to know exp code version
-label = subprocess.check_output(["git", "describe", "--always"]).strip()
-writer.add_text("Git commit hash:", label.decode())
