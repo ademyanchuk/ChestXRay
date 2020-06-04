@@ -34,8 +34,8 @@ class CFG:
     stoch_sample = True
     num_tiles = 32
     tile_sz = 256
-    batch_size = 4
-    accum_step = 1  # effective batch size will be batch_size * accum_step
+    batch_size = 2
+    accum_step = 2  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
     aug_type = "heavy"  # "light" or "heavy"
     # model
