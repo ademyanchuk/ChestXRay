@@ -92,7 +92,6 @@ def train_eval_loop(
     checkpoint=False,
     num_epochs=CFG.epoch,
     device=device,
-    writer=writer,
     tb_tag="",
     model_name="debug",
 ):
@@ -308,6 +307,7 @@ def train_eval_loop(
         if val_running_loss < best_val_loss:
             # update best and save model
             best_val_loss = val_running_loss
+            best_qwk = val_qwk
             print(f"  Epoch {epoch} - Save Best Loss: {best_val_loss:.4f} Model")
             torch.save(
                 {
@@ -333,19 +333,8 @@ def train_eval_loop(
                 weights_to_tb(val_global_step)
             # add confusion matrix to TB
             conf_matrix_to_tb(val_epoch_labels, val_epoch_preds, val_global_step)
+
     # End of loop
-
-    # After finish collect hyperparams used, best metrics and write to TensorBoard
-    hparam_dict = {
-        key: val for key, val in CFG.__dict__.items() if not key.startswith("__")
-    }
-    metric_dict = {"hp/best_loss": best_val_loss, "hp/best_qwk": best_qwk}
-    writer.add_hparams(hparam_dict=hparam_dict, metric_dict=metric_dict)
-
-    # Get the current git commit hash to add it in Tensorboard, to know exp code version
-    label = subprocess.check_output(["git", "describe", "--always"]).strip()
-    writer.add_text("Git commit hash:", label.decode())
-
     return model, best_val_loss, best_qwk
 
 
@@ -548,7 +537,7 @@ if CFG.debug:
     optimizer = init_optimizer(model_ft)
     scheduler, sch_is_epoch_type = get_scheduler(optimizer, train_dataloader)
 
-    _ = train_eval_loop(
+    model_ft, best_loss, best_qwk = train_eval_loop(
         train_dataloader,
         val_dataloader,
         model_ft,
@@ -609,3 +598,14 @@ if CFG.resume:
         checkpoint=checkpoint,
         model_name=PREV_NAME,
     )
+
+# After finish collect hyperparams used, best metrics and write to TensorBoard
+hparam_dict = {
+    key: val for key, val in CFG.__dict__.items() if not key.startswith("__")
+}
+metric_dict = {"hp/best_loss": best_loss, "hp/best_qwk": best_qwk}
+writer.add_hparams(hparam_dict=hparam_dict, metric_dict=metric_dict)
+
+# Get the current git commit hash to add it in Tensorboard, to know exp code version
+label = subprocess.check_output(["git", "describe", "--always"]).strip()
+writer.add_text("Git commit hash:", label.decode())
