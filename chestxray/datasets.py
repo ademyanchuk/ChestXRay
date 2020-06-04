@@ -17,6 +17,12 @@ from chestxray.config import PANDA_IMGS
 from chestxray.config import TILES_IMGS
 
 
+TV_MEAN = [0.485, 0.456, 0.406]
+TV_STD = [0.229, 0.224, 0.225]
+
+BIT_MEAN = [0.5, 0.5, 0.5]
+BIT_STD = [0.5, 0.5, 0.5]
+
 augs_dict = {
     "heavy": A.Compose(
         [
@@ -388,7 +394,9 @@ def make_patch(image, patch_size, num_patch):
 
 
 class PatchTrainDataset(Dataset):
-    def __init__(self, df, is_train=True, transform=None, suffix="tiff", debug=CFG.debug):
+    def __init__(
+        self, df, is_train=True, transform=None, suffix="tiff", debug=CFG.debug
+    ):
         self.df = df
         self.labels = df[CFG.target_col].values
         self.is_train = is_train
@@ -413,12 +421,18 @@ class PatchTrainDataset(Dataset):
             image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
         )
         if self.is_train:
-            np.random.shuffle(patch)
+            ids = np.random.choice(range(len(patch)), size=len(patch), replace=False)
+            patch = patch[ids]
         # augment sequence
         if self.transform:
             for i in range(len(patch)):
                 augmented = self.transform(image=patch[i])
                 patch[i] = augmented["image"]
+
+        if CFG.arch.startswith("resnet"):
+            normalize = A.Normalize(mean=TV_MEAN, std=TV_STD)
+        elif CFG.arch == "bitM":
+            normalize = A.Normalize(mean=BIT_MEAN, std=BIT_STD)
 
         normalized = normalize(image=patch)
         patch = normalized["image"]
