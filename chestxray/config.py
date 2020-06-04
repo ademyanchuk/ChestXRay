@@ -54,9 +54,9 @@ class CFG:
     rlopp = 1  # learnig rate on plateu scheduler patience
     # training
     resume = False
-    prev_exp = None
-    from_epoch = None
-    stage = None
+    prev_exp = "None"
+    from_epoch = 0
+    stage = 0
     epoch = 35
     n_fold = 4
     use_amp = True
