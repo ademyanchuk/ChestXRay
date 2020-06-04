@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
 
+from chestxray.bit_net import get_weights
+from chestxray.bit_net import ResNetV2
 from chestxray.config import CFG
 
 
@@ -127,6 +129,16 @@ def aggregate(x, batch_size, num_patch):
     return x
 
 
+def make_BiT_model(num_classes, pretrained=True):
+    weights = get_weights("BiT-M-R50x1")
+    model = ResNetV2(
+        ResNetV2.BLOCK_UNITS["r50"], width_factor=1, head_size=6, zero_head=True
+    )
+    if pretrained:
+        model.load_from(weights)
+    return model
+
+
 class TilesModel(nn.Module):
     def __init__(self, arch="resnet50", n=CFG.target_size, pretrained=True):
         super().__init__()
@@ -160,35 +172,40 @@ class TilesModel(nn.Module):
 class PatchModel(nn.Module):
     def __init__(self, arch="resnet50", n=CFG.target_size, pretrained=True):
         super().__init__()
-        assert arch in ["resnet50", "resnet34"]
+        assert arch in ["resnet50", "resnet34", "bitM"]
         model_dict = {
             "resnet50": models.resnet50,
             "resnet34": models.resnet34,
         }
 
-        model = model_dict[arch](pretrained=pretrained)
+        if arch.startswith("resnet"):
+            model = model_dict[arch](pretrained=pretrained)
 
-        self.encoder = nn.Sequential(*list(model.children())[:-2])
-        num_ftrs = list(model.children())[-1].in_features
-        if CFG.model_cls == "deep":
-            self.head = nn.Sequential(
-                OrderedDict(
-                    [
-                        ("cls_fc", nn.Linear(2 * num_ftrs, 512)),
-                        ("cls_bn", nn.BatchNorm1d(512)),
-                        ("cls_relu", nn.ReLU(inplace=True)),
-                        ("cls_logit", nn.Linear(512, CFG.target_size)),
-                    ]
+            self.encoder = nn.Sequential(*list(model.children())[:-2])
+            num_ftrs = list(model.children())[-1].in_features
+            if CFG.model_cls == "deep":
+                self.head = nn.Sequential(
+                    OrderedDict(
+                        [
+                            ("cls_fc", nn.Linear(2 * num_ftrs, 512)),
+                            ("cls_bn", nn.BatchNorm1d(512)),
+                            ("cls_relu", nn.ReLU(inplace=True)),
+                            ("cls_logit", nn.Linear(512, CFG.target_size)),
+                        ]
+                    )
                 )
-            )
-        elif CFG.model_cls == "one_layer":
-            self.head = nn.Sequential(
-                OrderedDict(
-                    [
-                        ("cls_logit", nn.Linear(2 * num_ftrs, CFG.target_size)),
-                    ]
+            elif CFG.model_cls == "one_layer":
+                self.head = nn.Sequential(
+                    OrderedDict(
+                        [("cls_logit", nn.Linear(2 * num_ftrs, CFG.target_size))]
+                    )
                 )
-            )
+        # BiT Network
+        elif arch == "bitM":
+            model = make_BiT_model(num_classes=n, pretrained=pretrained)
+            self.encoder = nn.Sequential(*list(model.children())[:-1])
+            self.head = nn.Linear(4096, n)
+
         del model
 
     def forward(self, x):
