@@ -22,7 +22,7 @@ TILES_IMGS = PANDA_PATH / "tiles36x128x1"  # "tiles144x64x1" or "tiles36x128x1"
 # PANDA competition config
 class CFG:
     # overall
-    debug = True
+    debug = False
     seed = 1982
     # data
     img_height = 256
@@ -37,7 +37,7 @@ class CFG:
     batch_size = 2
     accum_step = 2  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
-    aug_type = "heavy"  # "light" or "heavy"
+    aug_type = "light"  # "light" or "heavy"
     # model
     arch = "resnet50"  # "resnet34", "resnet50", "bitM"
     finetune = False  # or "1stage"
@@ -61,4 +61,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "Debug"
+    descript = "Try overfit with basic config"
