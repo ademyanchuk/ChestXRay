@@ -43,10 +43,10 @@ class CFG:
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
     # loss
-    loss = "cce"  # "cce" or "ls_soft_ce"
+    loss = "ls_soft_ce"  # "cce" or "ls_soft_ce"
     # optim
     optim = "radam"  # "adam", "sgd" or "radam"
-    lr = 0.001 if optim == "sgd" else 1e-4
+    lr = 1e-3 if optim == "sgd" else 1e-4
     # schedule
     schedule_type = "none"  # "one_cycle", "reduce_on_plateau" or "cawr"
     cawr_T = 1
@@ -57,7 +57,7 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 35
+    epoch = 20
     n_fold = 4
     use_amp = True
     # Experiment
