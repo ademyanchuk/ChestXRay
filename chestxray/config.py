@@ -48,7 +48,7 @@ class CFG:
     optim = "radam"  # "adam", "sgd" or "radam"
     lr = 1e-3 if optim == "sgd" else 1e-4
     # schedule
-    schedule_type = "none"  # "one_cycle", "reduce_on_plateau" or "cawr"
+    schedule_type = "one_cycle"  # "one_cycle", "reduce_on_plateau" or "cawr"
     cawr_T = 1
     cawr_Tmult = 2
     rlopp = 1  # learnig rate on plateu scheduler patience
@@ -57,8 +57,8 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 20
+    epoch = 30
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "Try overfit with basic config"
+    descript = "One cycle cosin annealing"
