@@ -28,6 +28,7 @@ ipywidgets = "^7.5.1"
 apex = {git = "https://github.com/NVIDIA/apex"}
 torch-lr-finder = "^0.1.5"
 h5py = "^2.10.0"
+imagehash = "^4.1.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.1"

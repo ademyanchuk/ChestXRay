@@ -358,6 +358,21 @@ all = ["matplotlib (>=3.1)", "tifffile (>=2019.7.2)"]
 
 [[package]]
 category = "main"
+description = "Image Hashing library"
+name = "imagehash"
+optional = false
+python-versions = "*"
+version = "4.1.0"
+
+[package.dependencies]
+PyWavelets = "*"
+numpy = "*"
+pillow = "*"
+scipy = "*"
+six = "*"
+
+[[package]]
+category = "main"
 description = "Library for reading and writing a wide range of image, video, scientific, and volumetric data formats."
 name = "imageio"
 optional = false
@@ -1650,7 +1665,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "a9ac40defcccd9b54bf74a368a04ee90fb688278eed942a764311a8dcf1ac9cf"
+content-hash = "e666398311081c3158b720ac34e3f02d9f225236868a2ad6d7370cd10f5ed318"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1858,6 +1873,9 @@ imagecodecs = [
     {file = "imagecodecs-2020.2.18-cp38-cp38-win32.whl", hash = "sha256:e8f460145258a28544d4119f58cab2daf87ac6653429ab9df7dff7d2cc30714f"},
     {file = "imagecodecs-2020.2.18-cp38-cp38-win_amd64.whl", hash = "sha256:0538f7a4def1f6745b2d83d21883dcd61e82bc8faaca810e3a35e6b551b455d1"},
     {file = "imagecodecs-2020.2.18.tar.gz", hash = "sha256:c019b19438dff31365fee3002b438992c16bc9955a036f466c600d80699cb5a2"},
+]
+imagehash = [
+    {file = "ImageHash-4.1.0.tar.gz", hash = "sha256:978e25d3df66ae8fa4fb24542e46cea6d0724f02c0c760b2de4931a54d5c7482"},
 ]
 imageio = [
     {file = "imageio-2.8.0-py3-none-any.whl", hash = "sha256:1e4ab29b3775bb093c7a35854a0412857145450183344678829b30e72263b001"},
