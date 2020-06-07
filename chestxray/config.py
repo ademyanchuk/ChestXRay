@@ -34,19 +34,19 @@ class CFG:
     stoch_sample = True
     num_tiles = 32
     tile_sz = 256
-    batch_size = 2
+    batch_size = 4
     accum_step = 2  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
     aug_type = "light"  # "light" or "heavy"
     # model
-    arch = "resnet50"  # "resnet34", "resnet50", "bitM"
+    arch = "resnet34"  # "resnet34", "resnet50", "bitM"
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
     # loss
-    loss = "ls_soft_ce"  # "cce" or "ls_soft_ce"
+    loss = "ohem"  # "cce" or "ls_soft_ce", "ohem"
     # optim
     optim = "radam"  # "adam", "sgd" or "radam"
-    lr = 1e-3 if optim == "sgd" else 1e-4
+    lr = 1e-3 if optim == "sgd" else 3e-4
     # schedule
     schedule_type = "one_cycle"  # "one_cycle", "reduce_on_plateau" or "cawr"
     cawr_T = 1
@@ -57,8 +57,8 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 30
+    epoch = 33
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "One cycle cosin annealing"
+    descript = "OHEM + rn34 + one cycle"
