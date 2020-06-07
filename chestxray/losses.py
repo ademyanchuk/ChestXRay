@@ -119,11 +119,11 @@ class TopkCrossEntropy(_WeightedLoss):
             weight=self.weight, ignore_index=self.ignore_index, reduction="none"
         )
 
-    def forward(self, input, target):
+    def forward(self, input, target, valid=False):
         loss = self.loss(F.log_softmax(input, dim=1), target)
         # print(loss)
 
-        if self.top_k == 1:
+        if self.top_k == 1 or valid:
             return torch.mean(loss)
         else:
             valid_loss, idxs = torch.topk(loss, int(self.top_k * loss.size()[0]))
