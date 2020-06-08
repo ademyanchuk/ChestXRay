@@ -25,17 +25,17 @@ class CFG:
     debug = False
     seed = 1982
     # data
-    img_height = 256
-    img_width = 256
+    img_height = 384
+    img_width = 384
     target_size = 6
     img_id_col = "image_id"
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
-    num_tiles = 32
-    tile_sz = 256
+    num_tiles = 16
+    tile_sz = 384
     batch_size = 4
-    accum_step = 2  # effective batch size will be batch_size * accum_step
+    accum_step = 4  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
     aug_type = "light"  # "light" or "heavy"
     # model
@@ -57,8 +57,8 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 33
+    epoch = 38
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "OHEM + rn34 + one cycle"
+    descript = "OHEM + rn34 + one cycle + 384x16"
