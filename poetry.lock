@@ -215,6 +215,17 @@ version = "0.3.0"
 
 [[package]]
 category = "main"
+description = "EfficientNet implemented in PyTorch."
+name = "efficientnet-pytorch"
+optional = false
+python-versions = ">=3.5.0"
+version = "0.6.3"
+
+[package.dependencies]
+torch = "*"
+
+[[package]]
+category = "main"
 description = "Discover and load entry points from installed packages."
 name = "entrypoints"
 optional = false
@@ -1665,7 +1676,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "e666398311081c3158b720ac34e3f02d9f225236868a2ad6d7370cd10f5ed318"
+content-hash = "aedb78f778d54b43abd1911ee82aa69b1d709554d121fcb418b76b67d02d24e6"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1746,6 +1757,9 @@ defusedxml = [
 ]
 distlib = [
     {file = "distlib-0.3.0.zip", hash = "sha256:2e166e231a26b36d6dfe35a48c4464346620f8645ed0ace01ee31822b288de21"},
+]
+efficientnet-pytorch = [
+    {file = "efficientnet_pytorch-0.6.3.tar.gz", hash = "sha256:6667459336893e9bf6367de3788ba449fed97f65da3b6782bf2204b6273a319f"},
 ]
 entrypoints = [
     {file = "entrypoints-0.3-py2.py3-none-any.whl", hash = "sha256:589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19"},
