@@ -436,9 +436,9 @@ class PatchTrainDataset(Dataset):
                 augmented = self.transform(image=patch[i])
                 patch[i] = augmented["image"]
 
-        if CFG.arch.startswith("resnet"):
+        if CFG.arch != "bitM":
             normalize = A.Normalize(mean=TV_MEAN, std=TV_STD)
-        elif CFG.arch == "bitM":
+        else:
             normalize = A.Normalize(mean=BIT_MEAN, std=BIT_STD)
 
         normalized = normalize(image=patch)
