@@ -34,12 +34,12 @@ class CFG:
     stoch_sample = True
     num_tiles = 32
     tile_sz = 256
-    batch_size = 4
+    batch_size = 3
     accum_step = 2  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
-    aug_type = "heavy"  # "light" or "heavy"
+    aug_type = "light"  # "light" or "heavy"
     # model
-    arch = "resnet34"  # "resnet34", "resnet50", "bitM"
+    arch = "efnet"  # "resnet34", "resnet50", "bitM", "efnet"
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
     # loss
@@ -57,8 +57,8 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 40
+    epoch = 35
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "OHEM + rn34 + one cycle + 256x16 + aug"
+    descript = "OHEM + efnet-b0 + one cycle + 256x32"
