@@ -34,7 +34,7 @@ class CFG:
     stoch_sample = True
     num_tiles = 32
     tile_sz = 256
-    batch_size = 3
+    batch_size = 2
     accum_step = 2  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
     aug_type = "light"  # "light" or "heavy"
@@ -43,7 +43,7 @@ class CFG:
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
     # loss
-    loss = "ohem"  # "cce" or "ls_soft_ce", "ohem"
+    loss = "ls_soft_ce"  # "cce" or "ls_soft_ce", "ohem"
     # optim
     optim = "radam"  # "adam", "sgd" or "radam"
     lr = 1e-3 if optim == "sgd" else 3e-4
@@ -61,4 +61,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "OHEM + efnet-b0 + one cycle + 256x32"
+    descript = "soft + efnet-b0 + one cycle + 256x32"
