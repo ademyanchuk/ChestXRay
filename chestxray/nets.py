@@ -4,6 +4,7 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from efficientnet_pytorch import EfficientNet
 from torchvision import models
 
 from chestxray.bit_net import get_weights
@@ -216,4 +217,47 @@ class PatchModel(nn.Module):
 
         x = aggregate(x, batch_size, num_patch)
         x = self.head(x)
+        return x
+
+
+class PatchEnetModel(nn.Module):
+    def __init__(self, backbone="efficientnet-b0", n=CFG.target_size, pretrained=True):
+        super().__init__()
+        assert backbone in ["efficientnet-b0"]
+
+        if pretrained:
+            self.model = EfficientNet.from_pretrained(backbone)
+
+        num_ftrs = self.model._fc.in_features
+        if CFG.model_cls == "deep":
+            self.model._fc = nn.Sequential(
+                OrderedDict(
+                    [
+                        (
+                            "cls_fc",
+                            nn.Linear(2 * num_ftrs, 512),
+                        ),  # agregate use concat pooling, so *2
+                        ("cls_bn", nn.BatchNorm1d(512)),
+                        ("cls_relu", nn.ReLU(inplace=True)),
+                        ("cls_logit", nn.Linear(512, CFG.target_size)),
+                    ]
+                )
+            )
+        elif CFG.model_cls == "one_layer":
+            self.model._fc = nn.Sequential(
+                OrderedDict([("cls_logit", nn.Linear(2 * num_ftrs, CFG.target_size))])
+            )
+        del self.model._avg_pooling  # use pooling in aggregate func
+
+    def forward(self, x):
+        batch_size, num_patch, C, H, W = x.shape
+
+        x = x.view(-1, C, H, W)  # x -> bs*num_patch x C x H x W
+        x = self.model.extract_features(
+            x
+        )  # x -> bs*num_patch x C(Maps) x H(Maps) x W(Maps)
+
+        x = aggregate(x, batch_size, num_patch)
+        x = self.model._dropout(x)
+        x = self.model._fc(x)
         return x
