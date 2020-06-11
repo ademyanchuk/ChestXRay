@@ -102,9 +102,7 @@ augs_dict = {
     ),
 }
 
-normalize = A.Compose(
-    [A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],)]
-)
+normalize = A.Normalize(mean=TV_MEAN, std=TV_STD)
 
 
 def get_transforms(*, data, aug="light"):
@@ -402,7 +400,13 @@ def make_patch(image, patch_size, num_patch):
 
 class PatchTrainDataset(Dataset):
     def __init__(
-        self, df, is_train=True, transform=None, suffix="tiff", debug=CFG.debug
+        self,
+        df,
+        is_train=True,
+        transform=None,
+        suffix="tiff",
+        debug=CFG.debug,
+        bce_loss=CFG.loss == "bce",
     ):
         self.df = df
         self.labels = df[CFG.target_col].values
@@ -410,6 +414,7 @@ class PatchTrainDataset(Dataset):
         self.transform = transform
         self.suffix = suffix
         self.debug = debug
+        self.bce_loss = bce_loss
 
     def __len__(self):
         return len(self.df)
@@ -427,6 +432,7 @@ class PatchTrainDataset(Dataset):
         patch, coord = make_patch(
             image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
         )
+
         if self.is_train:
             ids = np.random.choice(range(len(patch)), size=len(patch), replace=False)
             patch = patch[ids]
@@ -447,7 +453,12 @@ class PatchTrainDataset(Dataset):
         patch = patch.transpose(0, 3, 1, 2)
         patch = np.ascontiguousarray(patch)
 
-        label = self.labels[idx]
+        # if use bce, make label as bit encoded vector
+        if self.bce_loss:
+            label = np.zeros(CFG.target_size - 1).astype(np.float32)
+            label[: self.labels[idx]] = 1.0
+        else:
+            label = self.labels[idx]
 
         item = (patch, label)
         if self.debug:
