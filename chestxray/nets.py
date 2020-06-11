@@ -178,6 +178,9 @@ class PatchModel(nn.Module):
             "resnet50": models.resnet50,
             "resnet34": models.resnet34,
         }
+        # if we use BCE loss, need n-1 outputs
+        if CFG.loss == "bce":
+            n -= 1
 
         if arch.startswith("resnet"):
             model = model_dict[arch](pretrained=pretrained)
@@ -191,15 +194,13 @@ class PatchModel(nn.Module):
                             ("cls_fc", nn.Linear(2 * num_ftrs, 512)),
                             ("cls_bn", nn.BatchNorm1d(512)),
                             ("cls_relu", nn.ReLU(inplace=True)),
-                            ("cls_logit", nn.Linear(512, CFG.target_size)),
+                            ("cls_logit", nn.Linear(512, n)),
                         ]
                     )
                 )
             elif CFG.model_cls == "one_layer":
                 self.head = nn.Sequential(
-                    OrderedDict(
-                        [("cls_logit", nn.Linear(2 * num_ftrs, CFG.target_size))]
-                    )
+                    OrderedDict([("cls_logit", nn.Linear(2 * num_ftrs, n))])
                 )
         # BiT Network
         elif arch == "bitM":
@@ -225,6 +226,10 @@ class PatchEnetModel(nn.Module):
         super().__init__()
         assert backbone in ["efficientnet-b0"]
 
+        # if we use BCE loss, need n-1 outputs
+        if CFG.loss == "bce":
+            n -= 1
+
         if pretrained:
             self.model = EfficientNet.from_pretrained(backbone)
 
@@ -239,13 +244,13 @@ class PatchEnetModel(nn.Module):
                         ),  # agregate use concat pooling, so *2
                         ("cls_bn", nn.BatchNorm1d(512)),
                         ("cls_relu", nn.ReLU(inplace=True)),
-                        ("cls_logit", nn.Linear(512, CFG.target_size)),
+                        ("cls_logit", nn.Linear(512, n)),
                     ]
                 )
             )
         elif CFG.model_cls == "one_layer":
             self.model._fc = nn.Sequential(
-                OrderedDict([("cls_logit", nn.Linear(2 * num_ftrs, CFG.target_size))])
+                OrderedDict([("cls_logit", nn.Linear(2 * num_ftrs, n))])
             )
         del self.model._avg_pooling  # use pooling in aggregate func
 
