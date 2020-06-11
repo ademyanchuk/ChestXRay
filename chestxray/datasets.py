@@ -88,8 +88,8 @@ augs_dict = {
             A.Flip(),
             A.ShiftScaleRotate(
                 shift_limit=0.05,
-                scale_limit=0.1,
-                rotate_limit=15,
+                scale_limit=0.05,
+                rotate_limit=5,
                 border_mode=cv2.BORDER_CONSTANT,
                 value=(255, 255, 255),
             ),
