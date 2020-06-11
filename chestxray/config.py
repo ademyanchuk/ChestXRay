@@ -62,4 +62,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "cce + rn34 + one cycle + 256x32"
+    descript = "bce + rn34 + one cycle + 256x32"
