@@ -30,21 +30,22 @@ class CFG:
     stoch_sample = True
     num_tiles = 32
     tile_sz = 256
-    batch_size = 2
-    accum_step = 2  # effective batch size will be batch_size * accum_step
+    batch_size = 4
+    accum_step = 1  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
     aug_type = "light"  # "light" or "heavy"
     # model
-    arch = "resnet50"  # "resnet34", "resnet50", "bitM"
+    arch = "resnet34"  # "resnet34", "resnet50", "bitM", "efnet"
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
+    pre_init_fc_bias = False
     # loss
-    loss = "ls_soft_ce"  # "cce" or "ls_soft_ce"
+    loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce"
     # optim
     optim = "radam"  # "adam", "sgd" or "radam"
-    lr = 1e-3 if optim == "sgd" else 1e-4
+    lr = 1e-3 if optim == "sgd" else 3e-4
     # schedule
-    schedule_type = "none"  # "one_cycle", "reduce_on_plateau" or "cawr"
+    schedule_type = "one_cycle"  # "one_cycle", "reduce_on_plateau" or "cawr"
     cawr_T = 1
     cawr_Tmult = 2
     rlopp = 1  # learnig rate on plateu scheduler patience
@@ -53,11 +54,11 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 20
+    epoch = 33
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "Try overfit with basic config"
+    descript = "bce + rn34 + one cycle + 256x32"
 
 
 # Datasets
@@ -151,31 +152,36 @@ def aggregate(x, batch_size, num_patch):
 class PatchModel(nn.Module):
     def __init__(self, arch="resnet50", n=CFG.target_size, pretrained=True):
         super().__init__()
-        assert arch in ["resnet50", "resnet34"]
+        assert arch in ["resnet50", "resnet34", "bitM"]
         model_dict = {
             "resnet50": models.resnet50,
             "resnet34": models.resnet34,
         }
+        # if we use BCE loss, need n-1 outputs
+        if CFG.loss == "bce":
+            n -= 1
 
-        model = model_dict[arch](pretrained=pretrained)
+        if arch.startswith("resnet"):
+            model = model_dict[arch](pretrained=pretrained)
 
-        self.encoder = nn.Sequential(*list(model.children())[:-2])
-        num_ftrs = list(model.children())[-1].in_features
-        if CFG.model_cls == "deep":
-            self.head = nn.Sequential(
-                OrderedDict(
-                    [
-                        ("cls_fc", nn.Linear(2 * num_ftrs, 512)),
-                        ("cls_bn", nn.BatchNorm1d(512)),
-                        ("cls_relu", nn.ReLU(inplace=True)),
-                        ("cls_logit", nn.Linear(512, CFG.target_size)),
-                    ]
+            self.encoder = nn.Sequential(*list(model.children())[:-2])
+            num_ftrs = list(model.children())[-1].in_features
+            if CFG.model_cls == "deep":
+                self.head = nn.Sequential(
+                    OrderedDict(
+                        [
+                            ("cls_fc", nn.Linear(2 * num_ftrs, 512)),
+                            ("cls_bn", nn.BatchNorm1d(512)),
+                            ("cls_relu", nn.ReLU(inplace=True)),
+                            ("cls_logit", nn.Linear(512, n)),
+                        ]
+                    )
                 )
-            )
-        elif CFG.model_cls == "one_layer":
-            self.head = nn.Sequential(
-                OrderedDict([("cls_logit", nn.Linear(2 * num_ftrs, CFG.target_size))])
-            )
+            elif CFG.model_cls == "one_layer":
+                self.head = nn.Sequential(
+                    OrderedDict([("cls_logit", nn.Linear(2 * num_ftrs, n))])
+                )
+
         del model
 
     def forward(self, x):
