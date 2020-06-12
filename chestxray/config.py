@@ -22,7 +22,7 @@ TILES_IMGS = PANDA_PATH / "tiles36x128x1"  # "tiles144x64x1" or "tiles36x128x1"
 # PANDA competition config
 class CFG:
     # overall
-    debug = True
+    debug = False
     seed = 1982
     # data
     img_height = 224
