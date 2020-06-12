@@ -22,24 +22,24 @@ TILES_IMGS = PANDA_PATH / "tiles36x128x1"  # "tiles144x64x1" or "tiles36x128x1"
 # PANDA competition config
 class CFG:
     # overall
-    debug = False
+    debug = True
     seed = 1982
     # data
-    img_height = 256
-    img_width = 256
+    img_height = 224
+    img_width = 224
     target_size = 6
     img_id_col = "image_id"
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
     num_tiles = 32
-    tile_sz = 256
-    batch_size = 4
-    accum_step = 1  # effective batch size will be batch_size * accum_step
+    tile_sz = 224
+    batch_size = 2
+    accum_step = 2  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
     aug_type = "light"  # "light" or "heavy"
     # model
-    arch = "resnet34"  # "resnet34", "resnet50", "bitM", "efnet"
+    arch = "efnet"  # "resnet34", "resnet50", "bitM", "efnet"
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
     pre_init_fc_bias = False
@@ -62,4 +62,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce + rn34 + one cycle + 256x32"
+    descript = "bce + effnet-b0 + one cycle + 224x32"
