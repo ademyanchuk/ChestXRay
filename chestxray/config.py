@@ -25,21 +25,21 @@ class CFG:
     debug = False
     seed = 1982
     # data
-    img_height = 256
-    img_width = 256
+    img_height = 224
+    img_width = 224
     target_size = 6
     img_id_col = "image_id"
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
     num_tiles = 32
-    tile_sz = 256
-    batch_size = 1
-    accum_step = 4  # effective batch size will be batch_size * accum_step
+    tile_sz = 224
+    batch_size = 2
+    accum_step = 8  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
     aug_type = "light"  # "light" or "heavy"
     # model
-    arch = "bitM"  # "resnet34", "resnet50", "bitM", "efnet"
+    arch = "efnet"  # "resnet34", "resnet50", "bitM", "efnet"
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
     pre_init_fc_bias = False
@@ -62,4 +62,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce + bitM + one cycle + 256x32"
+    descript = "bce + EfNet + one cycle + 256x32 + ebs16"
