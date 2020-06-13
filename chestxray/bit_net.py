@@ -1,5 +1,6 @@
 import io
 from collections import OrderedDict
+from pathlib import Path
 
 import numpy as np
 import requests
@@ -14,6 +15,12 @@ def get_weights(bit_variant):
     )
     response.raise_for_status()
     return np.load(io.BytesIO(response.content))
+
+
+def weights_from_cache(bit_variant):
+    weights_path = Path.home() / f".cache/torch/checkpoints/{bit_variant}.npz"
+    assert weights_path.exists()
+    return np.load(weights_path)
 
 
 # Defining the architecture and loading weights
