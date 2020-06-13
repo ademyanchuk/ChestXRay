@@ -7,8 +7,8 @@ import torch.nn.functional as F
 from efficientnet_pytorch import EfficientNet
 from torchvision import models
 
-from chestxray.bit_net import get_weights
 from chestxray.bit_net import ResNetV2
+from chestxray.bit_net import weights_from_cache
 from chestxray.config import CFG
 
 
@@ -130,10 +130,23 @@ def aggregate(x, batch_size, num_patch):
     return x
 
 
-def make_BiT_model(num_classes, pretrained=True):
-    weights = get_weights("BiT-M-R50x1")
+def aggregateBiT(x, batch_size, num_patch):
+    _, C, H, W = x.shape
+    x = x.view(batch_size, num_patch, C, H, W)
+    x = x.permute(0, 2, 1, 3, 4).reshape(batch_size, C, num_patch * H, W)
+
+    x = F.adaptive_avg_pool2d(x, 1)
+    return x
+
+
+def make_BiT_model(num_classes=CFG.target_size, pretrained=True):
+    print("Loading BiT-M weights..")
+    weights = weights_from_cache("BiT-M-R50x1")
     model = ResNetV2(
-        ResNetV2.BLOCK_UNITS["r50"], width_factor=1, head_size=6, zero_head=True
+        ResNetV2.BLOCK_UNITS["r50"],
+        width_factor=1,
+        head_size=num_classes,
+        zero_head=True,
     )
     if pretrained:
         model.load_from(weights)
@@ -173,7 +186,7 @@ class TilesModel(nn.Module):
 class PatchModel(nn.Module):
     def __init__(self, arch="resnet50", n=CFG.target_size, pretrained=True):
         super().__init__()
-        assert arch in ["resnet50", "resnet34", "bitM"]
+        assert arch in ["resnet50", "resnet34"]
         model_dict = {
             "resnet50": models.resnet50,
             "resnet34": models.resnet34,
@@ -182,31 +195,25 @@ class PatchModel(nn.Module):
         if CFG.loss == "bce":
             n -= 1
 
-        if arch.startswith("resnet"):
-            model = model_dict[arch](pretrained=pretrained)
+        model = model_dict[arch](pretrained=pretrained)
 
-            self.encoder = nn.Sequential(*list(model.children())[:-2])
-            num_ftrs = list(model.children())[-1].in_features
-            if CFG.model_cls == "deep":
-                self.head = nn.Sequential(
-                    OrderedDict(
-                        [
-                            ("cls_fc", nn.Linear(2 * num_ftrs, 512)),
-                            ("cls_bn", nn.BatchNorm1d(512)),
-                            ("cls_relu", nn.ReLU(inplace=True)),
-                            ("cls_logit", nn.Linear(512, n)),
-                        ]
-                    )
+        self.encoder = nn.Sequential(*list(model.children())[:-2])
+        num_ftrs = list(model.children())[-1].in_features
+        if CFG.model_cls == "deep":
+            self.head = nn.Sequential(
+                OrderedDict(
+                    [
+                        ("cls_fc", nn.Linear(2 * num_ftrs, 512)),
+                        ("cls_bn", nn.BatchNorm1d(512)),
+                        ("cls_relu", nn.ReLU(inplace=True)),
+                        ("cls_logit", nn.Linear(512, n)),
+                    ]
                 )
-            elif CFG.model_cls == "one_layer":
-                self.head = nn.Sequential(
-                    OrderedDict([("cls_logit", nn.Linear(2 * num_ftrs, n))])
-                )
-        # BiT Network
-        elif arch == "bitM":
-            model = make_BiT_model(num_classes=n, pretrained=pretrained)
-            self.encoder = nn.Sequential(*list(model.children())[:-1])
-            self.head = nn.Linear(4096, n)
+            )
+        elif CFG.model_cls == "one_layer":
+            self.head = nn.Sequential(
+                OrderedDict([("cls_logit", nn.Linear(2 * num_ftrs, n))])
+            )
 
         del model
 
@@ -266,3 +273,28 @@ class PatchEnetModel(nn.Module):
         x = self.model._dropout(x)
         x = self.model._fc(x)
         return x
+
+
+class PatchBiTModel(nn.Module):
+    def __init__(self, n=CFG.target_size, pretrained=True):
+        super().__init__()
+        # if we use BCE loss, need n-1 outputs
+        if CFG.loss == "bce":
+            n -= 1
+
+        self.model = make_BiT_model(num_classes=n, pretrained=pretrained)
+        del self.model.head.avg  # use pooling in aggregate func
+
+    def forward(self, x):
+        batch_size, num_patch, C, H, W = x.shape
+
+        x = x.view(-1, C, H, W)
+        # x -> bs*num_patch x C x H x W
+        x = self.model.body(self.model.root(x))
+        x = self.model.head.relu(self.model.head.gn(x))
+        # x -> bs*num_patch x C(Maps) x H(Maps) x W(Maps)
+
+        x = aggregateBiT(x, batch_size, num_patch)
+        x = self.model.head.conv(x)
+        assert x.shape[-2:] == (1, 1)  # We should have no spatial shape left.
+        return x[..., 0, 0]
