@@ -231,7 +231,7 @@ class PatchModel(nn.Module):
 class PatchEnetModel(nn.Module):
     def __init__(self, backbone="efficientnet-b0", n=CFG.target_size, pretrained=True):
         super().__init__()
-        assert backbone in ["efficientnet-b0"]
+        assert backbone in ["efficientnet-b0", "efficientnet-b3"]
 
         # if we use BCE loss, need n-1 outputs
         if CFG.loss == "bce":
