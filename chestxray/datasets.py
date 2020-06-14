@@ -28,53 +28,34 @@ augs_dict = {
         [
             A.Flip(),
             A.ShiftScaleRotate(
-                shift_limit=0.05,
+                shift_limit=0.1,
                 scale_limit=0.1,
-                rotate_limit=15,
+                rotate_limit=10,
                 border_mode=cv2.BORDER_CONSTANT,
                 value=(255, 255, 255),
             ),
-            A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2),
-            # A.OneOf(
-            #     [
-            #         A.ShiftScaleRotate(
-            #             shift_limit=0.05,
-            #             scale_limit=0.1,
-            #             rotate_limit=15,
-            #             border_mode=cv2.BORDER_CONSTANT,
-            #             value=(255, 255, 255),
-            #         ),
-            #         A.OpticalDistortion(
-            #             distort_limit=0.11,
-            #             shift_limit=0.15,
-            #             border_mode=cv2.BORDER_CONSTANT,
-            #             value=(255, 255, 255),
-            #         ),
-            #         A.NoOp(),
-            #     ]
-            # ),
-            # A.RandomSizedCrop(
-            #     min_max_height=(int(CFG.img_height * 0.75), CFG.img_height),
-            #     height=CFG.img_height,
-            #     width=CFG.img_width,
-            #     p=0.3,
-            # ),
-            # A.OneOf(
-            #     [
-            #         A.RandomBrightnessContrast(
-            #             brightness_limit=0.3, contrast_limit=0.3
-            #         ),
-            #         A.RandomGamma(gamma_limit=(50, 150)),
-            #         A.NoOp(),
-            #     ]
-            # ),
-            # A.OneOf(
-            #     [
-            #         A.RGBShift(r_shift_limit=20, b_shift_limit=15, g_shift_limit=15),
-            #         A.HueSaturationValue(hue_shift_limit=5, sat_shift_limit=5),
-            #         A.NoOp(),
-            #     ]
-            # ),
+            A.RandomSizedCrop(
+                min_max_height=(int(CFG.img_height * 0.75), CFG.img_height),
+                height=CFG.img_height,
+                width=CFG.img_width,
+                p=0.3,
+            ),
+            A.OneOf(
+                [
+                    A.RandomBrightnessContrast(
+                        brightness_limit=0.2, contrast_limit=0.2
+                    ),
+                    A.RandomGamma(gamma_limit=(50, 150)),
+                    A.NoOp(),
+                ]
+            ),
+            A.OneOf(
+                [
+                    A.RGBShift(r_shift_limit=20, b_shift_limit=15, g_shift_limit=15),
+                    A.HueSaturationValue(hue_shift_limit=5, sat_shift_limit=5),
+                    A.NoOp(),
+                ]
+            ),
             # A.OneOf([A.CLAHE(), A.NoOp()]),
             # This transformation first / 255. -> scale to [0,1] and
             # then - mean and / by std
