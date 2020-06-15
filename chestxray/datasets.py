@@ -387,7 +387,7 @@ class PatchTrainDataset(Dataset):
         transform=None,
         suffix="tiff",
         debug=CFG.debug,
-        bce_loss=CFG.loss == "bce",
+        loss=CFG.loss,
     ):
         self.df = df
         self.labels = df[CFG.target_col].values
@@ -395,7 +395,7 @@ class PatchTrainDataset(Dataset):
         self.transform = transform
         self.suffix = suffix
         self.debug = debug
-        self.bce_loss = bce_loss
+        self.loss = loss
 
     def __len__(self):
         return len(self.df)
@@ -435,11 +435,13 @@ class PatchTrainDataset(Dataset):
         patch = np.ascontiguousarray(patch)
 
         # if use bce, make label as bit encoded vector
-        if self.bce_loss:
+        if self.loss == "bce":
             label = np.zeros(CFG.target_size - 1).astype(np.float32)
             label[: self.labels[idx]] = 1.0
         else:
             label = self.labels[idx]
+            if self.loss == "huber":
+                label = label.astype(np.float32)
 
         item = (patch, label)
         if self.debug:

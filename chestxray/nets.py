@@ -184,15 +184,19 @@ class TilesModel(nn.Module):
 
 
 class PatchModel(nn.Module):
-    def __init__(self, arch="resnet50", n=CFG.target_size, pretrained=True):
+    def __init__(
+        self, arch="resnet50", n=CFG.target_size, pretrained=True, loss=CFG.loss
+    ):
         super().__init__()
         assert arch in ["resnet50", "resnet34"]
         model_dict = {
             "resnet50": models.resnet50,
             "resnet34": models.resnet34,
         }
+
+        self.loss = loss
         # if we use BCE loss, need n-1 outputs
-        if CFG.loss == "bce":
+        if self.loss in ["bce", "huber"]:
             n -= 1
 
         model = model_dict[arch](pretrained=pretrained)
@@ -225,20 +229,30 @@ class PatchModel(nn.Module):
 
         x = aggregate(x, batch_size, num_patch)
         x = self.head(x)
+        if self.loss == "huber":
+            return x.sigmoid().sum(1)
         return x
 
 
 class PatchEnetModel(nn.Module):
-    def __init__(self, backbone="efficientnet-b0", n=CFG.target_size, pretrained=True):
+    def __init__(
+        self,
+        backbone="efficientnet-b0",
+        n=CFG.target_size,
+        pretrained=True,
+        loss=CFG.loss,
+    ):
         super().__init__()
         assert backbone in ["efficientnet-b0", "efficientnet-b3"]
-
+        self.loss = loss
         # if we use BCE loss, need n-1 outputs
-        if CFG.loss == "bce":
+        if self.loss in ["bce", "huber"]:
             n -= 1
 
         if pretrained:
             self.model = EfficientNet.from_pretrained(backbone)
+        else:
+            self.model = EfficientNet.from_name(backbone)
 
         num_ftrs = self.model._fc.in_features
         if CFG.model_cls == "deep":
@@ -272,6 +286,9 @@ class PatchEnetModel(nn.Module):
         x = aggregate(x, batch_size, num_patch)
         x = self.model._dropout(x)
         x = self.model._fc(x)
+
+        if self.loss == "huber":
+            return x.sigmoid().sum(1)
         return x
 
 
