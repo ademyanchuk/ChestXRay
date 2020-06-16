@@ -440,8 +440,6 @@ class PatchTrainDataset(Dataset):
             label[: self.labels[idx]] = 1.0
         else:
             label = self.labels[idx]
-            if self.loss == "huber":
-                label = label.astype(np.float32)
 
         item = (patch, label)
         if self.debug:
