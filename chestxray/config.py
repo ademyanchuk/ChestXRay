@@ -43,7 +43,7 @@ class CFG:
     enet_bone = "efficientnet-b0"
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
-    pre_init_fc_bias = False
+    pre_init_fc_bias = True
     # loss
     loss = "huber"  # "cce" or "ls_soft_ce", "ohem", "bce", "huber"
     # optim
