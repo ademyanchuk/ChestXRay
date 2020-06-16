@@ -8,3 +8,5 @@ runs*/
 
 # pytorch checkpoints
 *.pth
+
+logs/
