@@ -37,6 +37,7 @@ class CFG:
     batch_size = 8
     accum_step = 1  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
+    multi_lvl = True  # for Patch Dataset
     aug_type = "light"  # "light" or "heavy"
     # model
     arch = "resnet34"  # "resnet34", "resnet50", "bitM", "efnet"
@@ -51,7 +52,7 @@ class CFG:
     lr = 1e-3 if optim == "sgd" else 3e-4
     # schedule
     schedule_type = "one_cycle"  # "one_cycle", "reduce_on_plateau" or "cawr"
-    oc_final_div_factor = 1e1
+    oc_final_div_factor = 1e2
     cawr_T = 1
     cawr_Tmult = 2
     rlopp = 1  # learnig rate on plateu scheduler patience
@@ -64,4 +65,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce + rn34 + one cycle + 224x32"
+    descript = "bce + rn34 + one cycle + 224x32 + multilvl"
