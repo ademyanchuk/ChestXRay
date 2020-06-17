@@ -51,6 +51,7 @@ class CFG:
     lr = 1e-3 if optim == "sgd" else 3e-4
     # schedule
     schedule_type = "one_cycle"  # "one_cycle", "reduce_on_plateau" or "cawr"
+    oc_final_div_factor = 1e1
     cawr_T = 1
     cawr_Tmult = 2
     rlopp = 1  # learnig rate on plateu scheduler patience
