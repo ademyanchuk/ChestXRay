@@ -388,6 +388,7 @@ class PatchTrainDataset(Dataset):
         suffix="tiff",
         debug=CFG.debug,
         loss=CFG.loss,
+        multi_lvl=False,
     ):
         self.df = df
         self.labels = df[CFG.target_col].values
@@ -396,6 +397,7 @@ class PatchTrainDataset(Dataset):
         self.suffix = suffix
         self.debug = debug
         self.loss = loss
+        self.multi_lvl = multi_lvl
 
     def __len__(self):
         return len(self.df)
@@ -404,15 +406,29 @@ class PatchTrainDataset(Dataset):
         file_id = self.df[CFG.img_id_col].values[idx]
         if self.suffix == "tiff":
             file_path = f"{PANDA_IMGS}/{file_id}.{self.suffix}"
-            image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+            image = skimage.io.MultiImage(file_path)
         elif self.suffix == "jpeg":
             file_path = f"{PANDA_IMGS}/{file_id}_1.{self.suffix}"
             image = cv2.imread(str(file_path))
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        patch, coord = make_patch(
-            image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
-        )
+        if self.multi_lvl:
+            assert CFG.tiff_layer < 2  # we use 2 layers here
+            num_patch_low = int(0.2 * CFG.num_tiles)
+            num_patch_med = CFG.num_tiles - num_patch_low
+            patch_low, _ = make_patch(
+                image[CFG.tiff_layer + 1],
+                patch_size=CFG.tile_sz,
+                num_patch=num_patch_low,
+            )
+            patch_med, _ = make_patch(
+                image[CFG.tiff_layer], patch_size=CFG.tile_sz, num_patch=num_patch_med
+            )
+            patch = np.concatenate([patch_low, patch_med])
+        else:
+            patch, coord = make_patch(
+                image[CFG.tiff_layer], patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
+            )
 
         if self.is_train:
             ids = np.random.choice(range(len(patch)), size=len(patch), replace=False)
