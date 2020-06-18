@@ -61,7 +61,7 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 40
+    epoch = 35
     n_fold = 4
     use_amp = True
     # Experiment
