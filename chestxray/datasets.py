@@ -417,14 +417,24 @@ class PatchTrainDataset(Dataset):
             num_patch_low = int(0.2 * CFG.num_tiles)
             num_patch_med = CFG.num_tiles - num_patch_low
             patch_low, _ = make_patch(
-                image[CFG.tiff_layer + 1],
-                patch_size=CFG.tile_sz,
+                image[CFG.tiff_layer],
+                patch_size=int(CFG.tile_sz * 4),
                 num_patch=num_patch_low,
             )
+            patch_low_down = np.zeros(
+                (num_patch_low, CFG.tile_sz, CFG.tile_sz, 3), dtype=np.uint8
+            )
+            for i in range(num_patch_low):
+                patch_low_down[i] = cv2.resize(
+                    patch_low[i],
+                    (CFG.tile_sz, CFG.tile_sz),
+                    interpolation=cv2.INTER_AREA,
+                )
+            del patch_low
             patch_med, _ = make_patch(
                 image[CFG.tiff_layer], patch_size=CFG.tile_sz, num_patch=num_patch_med
             )
-            patch = np.concatenate([patch_low, patch_med])
+            patch = np.concatenate([patch_low_down, patch_med])
         else:
             patch, coord = make_patch(
                 image[CFG.tiff_layer], patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
