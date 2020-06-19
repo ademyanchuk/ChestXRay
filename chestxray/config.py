@@ -32,11 +32,11 @@ class CFG:
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
-    num_tiles = 16
+    num_tiles = 36
     tile_sz = 224
-    batch_size = 16
+    batch_size = 8
     accum_step = 1  # effective batch size will be batch_size * accum_step
-    dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
+    dataset = "tiles"  # "patch", "tiles", "lazy", "hdf5"
     multi_lvl = False  # for Patch Dataset
     aug_type = "light"  # "light" or "heavy"
     # model
@@ -44,8 +44,9 @@ class CFG:
     enet_bone = "efficientnet-b0"
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
-    pre_init_fc_bias = True
+    pre_init_fc_bias = False
     # loss
+    ohem = False
     loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce"
     # optim
     optim = "radam"  # "adam", "sgd" or "radam"
@@ -65,4 +66,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce + rn34 + one cycle + 224x16"
+    descript = "bce + rn34 + one cycle + 224x36 tiles"
