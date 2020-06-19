@@ -27,17 +27,19 @@ class CFG:
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
-    num_tiles = 32
+    num_tiles = 16
     tile_sz = 224
-    batch_size = 2
-    accum_step = 2  # effective batch size will be batch_size * accum_step
+    batch_size = 16
+    accum_step = 1  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
+    multi_lvl = False  # for Patch Dataset
     aug_type = "light"  # "light" or "heavy"
     # model
-    arch = "efnet"  # "resnet34", "resnet50", "bitM", "efnet"
+    arch = "resnet34"  # "resnet34", "resnet50", "bitM", "efnet"
+    enet_bone = "efficientnet-b0"
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
-    pre_init_fc_bias = False
+    pre_init_fc_bias = True
     # loss
     loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce"
     # optim
@@ -45,6 +47,7 @@ class CFG:
     lr = 1e-3 if optim == "sgd" else 3e-4
     # schedule
     schedule_type = "one_cycle"  # "one_cycle", "reduce_on_plateau" or "cawr"
+    oc_final_div_factor = 1e2
     cawr_T = 1
     cawr_Tmult = 2
     rlopp = 1  # learnig rate on plateu scheduler patience
@@ -53,11 +56,11 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 33
+    epoch = 35
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce + effnet-b0 + one cycle + 224x32"
+    descript = "bce + rn34 + one cycle + 224x16"
 
 
 # Datasets
