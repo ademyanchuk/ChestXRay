@@ -25,16 +25,16 @@ class CFG:
     debug = False
     seed = 1982
     # data
-    img_height = 336
-    img_width = 336
+    img_height = 224
+    img_width = 224
     target_size = 6
     img_id_col = "image_id"
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
-    num_tiles = 12
-    tile_sz = 336
-    batch_size = 8
+    num_tiles = 16
+    tile_sz = 224
+    batch_size = 16
     accum_step = 1  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
     multi_lvl = False  # for Patch Dataset
@@ -65,4 +65,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce + rn34 + one cycle + 336x12"
+    descript = "bce + rn34 + one cycle + 224x16"
