@@ -34,12 +34,6 @@ augs_dict = {
                 border_mode=cv2.BORDER_CONSTANT,
                 value=(255, 255, 255),
             ),
-            A.RandomSizedCrop(
-                min_max_height=(int(CFG.img_height * 0.75), CFG.img_height),
-                height=CFG.img_height,
-                width=CFG.img_width,
-                p=0.3,
-            ),
             A.OneOf(
                 [
                     A.RandomBrightnessContrast(
@@ -230,6 +224,7 @@ def img_to_tiles(img, num_tiles=36, is_train=True, *args, **kwargs):
 
     return stack_sorted(tiles, gradient_ids, num_tiles)
 
+
 # Patch Version of Dataset from https://www.kaggle.com/hengck23/kernel16867b0575
 def make_patch(image, patch_size, num_patch):
     h, w = image.shape[:2]
@@ -264,7 +259,13 @@ def make_patch(image, patch_size, num_patch):
 
 class TilesTrainDataset(Dataset):
     def __init__(
-        self, df, is_train=True, transform=None, suffix="tiff", debug=CFG.debug, loss=CFG.loss
+        self,
+        df,
+        is_train=True,
+        transform=None,
+        suffix="tiff",
+        debug=CFG.debug,
+        loss=CFG.loss,
     ):
         self.df = df
         self.labels = df[CFG.target_col].values
@@ -288,9 +289,7 @@ class TilesTrainDataset(Dataset):
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # Make sure we can do square
         assert int(np.sqrt(CFG.num_tiles)) == np.sqrt(CFG.num_tiles)
-        patch, _ = make_patch(
-                image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
-            )
+        patch, _ = make_patch(image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles)
         if self.is_train:
             ids = np.random.choice(range(len(patch)), size=len(patch), replace=False)
         else:
@@ -305,7 +304,7 @@ class TilesTrainDataset(Dataset):
 
         image = image.transpose(2, 0, 1)  # to Chanel first
 
-         # if use bce, make label as bit encoded vector
+        # if use bce, make label as bit encoded vector
         if self.loss == "bce":
             label = np.zeros(CFG.target_size - 1).astype(np.float32)
             label[: self.labels[idx]] = 1.0
