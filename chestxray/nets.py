@@ -154,7 +154,9 @@ def make_BiT_model(num_classes=CFG.target_size, pretrained=True):
 
 
 class TilesModel(nn.Module):
-    def __init__(self, arch="resnet50", n=CFG.target_size, pretrained=True):
+    def __init__(
+        self, arch="resnet50", n=CFG.target_size, pretrained=True, loss=CFG.loss
+    ):
         super().__init__()
         assert arch in ["resnet50", "resnet34"]
         model_dict = {
@@ -162,27 +164,45 @@ class TilesModel(nn.Module):
             "resnet34": models.resnet34,
         }
 
-        self.model = model_dict[arch](pretrained=pretrained)
-        num_ftrs = self.model.fc.in_features
+        self.loss = loss
+        # if we use BCE loss, need n-1 outputs
+        if self.loss in ["bce"]:
+            n -= 1
+
+        model = model_dict[arch](pretrained=pretrained)
+
+        self.encoder = nn.Sequential(*list(model.children())[:-2])
+        num_ftrs = list(model.children())[-1].in_features
+        self.avgpool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
+        self.maxpool = nn.AdaptiveMaxPool2d(output_size=(1, 1))
         if CFG.model_cls == "deep":
-            self.model.fc = nn.Sequential(
+            self.head = nn.Sequential(
                 OrderedDict(
                     [
-                        ("cls_lin1", nn.Linear(num_ftrs, 512)),
-                        ("cls_relu", nn.ReLU(inplace=True)),
+                        ("cls_fc", nn.Linear(2 * num_ftrs, 512)),
                         ("cls_bn", nn.BatchNorm1d(512)),
-                        ("cls_lin2", nn.Linear(512, CFG.target_size)),
+                        ("cls_relu", nn.ReLU(inplace=True)),
+                        ("cls_logit", nn.Linear(512, n)),
                     ]
                 )
             )
         elif CFG.model_cls == "one_layer":
-            self.model.fc = nn.Linear(num_ftrs, CFG.target_size)
+            self.head = nn.Sequential(
+                OrderedDict([("cls_logit", nn.Linear(2 * num_ftrs, n))])
+            )
+
+        del model
 
     def forward(self, x):
-        x = self.model(x)
+        batch_size = x.shape[0]
+        x = self.encoder(x)  # x -> bs x C(Maps) x H(Maps) x W(Maps)
+        avg_x = self.avgpool(x)
+        max_x = self.maxpool(x)
+        x = torch.cat([avg_x, max_x], dim=1).view(batch_size, -1)
+        x = self.head(x)
         return x
 
-
+    
 class PatchModel(nn.Module):
     def __init__(
         self, arch="resnet50", n=CFG.target_size, pretrained=True, loss=CFG.loss
