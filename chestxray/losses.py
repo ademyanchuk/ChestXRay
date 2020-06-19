@@ -140,7 +140,7 @@ class TopkBCEWithLogitsLoss(nn.Module):
 
     def forward(self, logits, labels, valid=False):
         loss = self.criterion(logits, labels).mean(dim=1)
-        print(loss)
+        # print(loss)
 
         if self.top_k == 1 or valid or len(loss) < 2:
             return torch.mean(loss)
