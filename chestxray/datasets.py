@@ -195,8 +195,8 @@ def pxl_percentage(img, above_thresh=230):
     return whitish / pix_num
 
 
-def stack_sorted(tiles, ids, num_tiles):
-    # lets try hard-code 6x6 blocks
+def stack_sorted(tiles, ids):
+    num_tiles = len(tiles)
     step = np.sqrt(num_tiles).astype(int)
     stacked = np.vstack(
         [np.hstack(tiles[ids[i : i + step]]) for i in range(0, num_tiles, step)]
@@ -230,10 +230,41 @@ def img_to_tiles(img, num_tiles=36, is_train=True, *args, **kwargs):
 
     return stack_sorted(tiles, gradient_ids, num_tiles)
 
+# Patch Version of Dataset from https://www.kaggle.com/hengck23/kernel16867b0575
+def make_patch(image, patch_size, num_patch):
+    h, w = image.shape[:2]
+    s = patch_size
+
+    pad_x = int(patch_size * np.ceil(w / patch_size) - w)
+    pad_y = int(patch_size * np.ceil(h / patch_size) - h)
+    image = cv2.copyMakeBorder(
+        image, 0, pad_y, 0, pad_x, borderType=cv2.BORDER_CONSTANT, value=(255, 255, 255)
+    )
+    h, w = image.shape[:2]
+
+    patch = image.reshape(h // s, s, w // s, s, 3)
+    patch = patch.transpose(0, 2, 1, 3, 4).reshape(-1, s, s, 3)
+
+    n = len(patch)
+    index = np.argsort(patch.reshape(n, -1).sum(-1))[:num_patch]
+
+    y = s * (index // (w // s))
+    x = s * (index % (w // s))
+    coord = np.stack([x, y, x + s, y + s]).T
+
+    patch = patch[index]
+    if len(patch) < num_patch:
+        n = num_patch - len(patch)
+        patch = np.concatenate(
+            [patch, np.full((n, patch_size, patch_size, 3), 255, dtype=np.uint8)], 0
+        )
+        coord = np.concatenate([coord, np.full((n, 4), -1)], 0)
+    return patch, coord
+
 
 class TilesTrainDataset(Dataset):
     def __init__(
-        self, df, is_train=True, transform=None, suffix="tiff", debug=CFG.debug
+        self, df, is_train=True, transform=None, suffix="tiff", debug=CFG.debug, loss=CFG.loss
     ):
         self.df = df
         self.labels = df[CFG.target_col].values
@@ -241,6 +272,7 @@ class TilesTrainDataset(Dataset):
         self.is_train = is_train
         self.suffix = suffix
         self.debug = debug
+        self.loss = loss
 
     def __len__(self):
         return len(self.df)
@@ -254,17 +286,16 @@ class TilesTrainDataset(Dataset):
             file_path = f"{PANDA_IMGS}/{file_id}_1.{self.suffix}"
             image = cv2.imread(str(file_path))
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # use stochastic tiles compose for train and deterministic for valid
-        image = img_to_tiles(
-            image,
-            num_tiles=CFG.num_tiles,
-            is_train=self.is_train,
-            tile_h=CFG.tile_sz,
-            tile_w=CFG.tile_sz,
-        )
-        image = cv2.resize(
-            image, (CFG.img_height, CFG.img_width), interpolation=cv2.INTER_AREA
-        )
+        # Make sure we can do square
+        assert int(np.sqrt(CFG.num_tiles)) == np.sqrt(CFG.num_tiles)
+        patch, _ = make_patch(
+                image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
+            )
+        if self.is_train:
+            ids = np.random.choice(range(len(patch)), size=len(patch), replace=False)
+        else:
+            ids = np.arange(len(patch))
+        image = stack_sorted(patch, ids)
 
         if self.transform:
             augmented = self.transform(image=image)
@@ -274,7 +305,12 @@ class TilesTrainDataset(Dataset):
 
         image = image.transpose(2, 0, 1)  # to Chanel first
 
-        label = self.labels[idx]
+         # if use bce, make label as bit encoded vector
+        if self.loss == "bce":
+            label = np.zeros(CFG.target_size - 1).astype(np.float32)
+            label[: self.labels[idx]] = 1.0
+        else:
+            label = self.labels[idx]
 
         item = (image, label)
         if self.debug:
@@ -345,38 +381,6 @@ class TilesTestDataset(Dataset):
             image = augmented["image"]
 
         return image
-
-
-# Patch Version of Dataset from https://www.kaggle.com/hengck23/kernel16867b0575
-def make_patch(image, patch_size, num_patch):
-    h, w = image.shape[:2]
-    s = patch_size
-
-    pad_x = int(patch_size * np.ceil(w / patch_size) - w)
-    pad_y = int(patch_size * np.ceil(h / patch_size) - h)
-    image = cv2.copyMakeBorder(
-        image, 0, pad_y, 0, pad_x, borderType=cv2.BORDER_CONSTANT, value=(255, 255, 255)
-    )
-    h, w = image.shape[:2]
-
-    patch = image.reshape(h // s, s, w // s, s, 3)
-    patch = patch.transpose(0, 2, 1, 3, 4).reshape(-1, s, s, 3)
-
-    n = len(patch)
-    index = np.argsort(patch.reshape(n, -1).sum(-1))[:num_patch]
-
-    y = s * (index // (w // s))
-    x = s * (index % (w // s))
-    coord = np.stack([x, y, x + s, y + s]).T
-
-    patch = patch[index]
-    if len(patch) < num_patch:
-        n = num_patch - len(patch)
-        patch = np.concatenate(
-            [patch, np.full((n, patch_size, patch_size, 3), 255, dtype=np.uint8)], 0
-        )
-        coord = np.concatenate([coord, np.full((n, 4), -1)], 0)
-    return patch, coord
 
 
 class PatchTrainDataset(Dataset):
