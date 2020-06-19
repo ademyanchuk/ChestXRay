@@ -128,3 +128,22 @@ class TopkCrossEntropy(_WeightedLoss):
         else:
             valid_loss, idxs = torch.topk(loss, int(self.top_k * loss.size()[0]))
             return torch.mean(valid_loss)
+
+
+class TopkBCEWithLogitsLoss(nn.Module):
+    def __init__(
+        self, top_k=0.7, reduction="none",
+    ):
+        super(TopkBCEWithLogitsLoss, self).__init__()
+        self.top_k = top_k
+        self.criterion = nn.BCEWithLogitsLoss(reduction=reduction)
+
+    def forward(self, logits, labels, valid=False):
+        loss = self.criterion(logits, labels).mean(dim=1)
+        print(loss)
+
+        if self.top_k == 1 or valid or len(loss) < 2:
+            return torch.mean(loss)
+        else:
+            hard_loss, _ = torch.topk(loss, int(self.top_k * loss.shape[0]))
+            return torch.mean(hard_loss)
