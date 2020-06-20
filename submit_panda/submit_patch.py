@@ -27,11 +27,11 @@ class CFG:
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
-    num_tiles = 16
+    num_tiles = 36
     tile_sz = 224
-    batch_size = 16
+    batch_size = 8
     accum_step = 1  # effective batch size will be batch_size * accum_step
-    dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
+    dataset = "tiles"  # "patch", "tiles", "lazy", "hdf5"
     multi_lvl = False  # for Patch Dataset
     aug_type = "light"  # "light" or "heavy"
     # model
@@ -39,8 +39,9 @@ class CFG:
     enet_bone = "efficientnet-b0"
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
-    pre_init_fc_bias = True
+    pre_init_fc_bias = False
     # loss
+    ohem = False  # will work with ohem and bce
     loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce"
     # optim
     optim = "radam"  # "adam", "sgd" or "radam"
@@ -60,7 +61,7 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce + rn34 + one cycle + 224x16"
+    descript = "bce + rn34 + one cycle + 224x36 tiles"
 
 
 # Datasets
@@ -101,6 +102,15 @@ def make_patch(image, patch_size, num_patch):
     return patch, coord
 
 
+def stack_sorted(tiles, ids):
+    num_tiles = len(tiles)
+    step = np.sqrt(num_tiles).astype(int)
+    stacked = np.vstack(
+        [np.hstack(tiles[ids[i : i + step]]) for i in range(0, num_tiles, step)]
+    )
+    return stacked
+
+
 class PatchTestDataset(Dataset):
     def __init__(self, df, transform=None, img_path=TEST_PATH, suffix="tiff"):
         self.df = df
@@ -137,6 +147,47 @@ class PatchTestDataset(Dataset):
         patch = np.ascontiguousarray(patch)
 
         return patch
+
+
+class TilesTestDataset(Dataset):
+    def __init__(
+        self, df, transform=None, suffix="tiff", img_path=TEST_PATH,
+    ):
+        self.df = df
+        self.transform = transform
+        self.suffix = suffix
+        self.img_path = img_path
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        file_id = self.df[CFG.img_id_col].values[idx]
+
+        if self.suffix == "tiff":
+            file_path = f"{self.img_path}/{file_id}.{self.suffix}"
+            image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+        elif self.suffix == "jpeg":
+            file_path = f"{self.img_path}/{file_id}_1.{self.suffix}"
+            image = cv2.imread(str(file_path))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        # Make sure we can do square
+        assert int(np.sqrt(CFG.num_tiles)) == np.sqrt(CFG.num_tiles)
+        patch, _ = make_patch(image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles)
+
+        ids = np.arange(len(patch))
+        image = stack_sorted(patch, ids)
+
+        if self.transform:
+            augmented = self.transform(image=image)
+            image = augmented["image"]
+        normalized = normalize(image=image)
+        image = normalized["image"]
+
+        image = image.transpose(2, 0, 1)  # to Chanel first
+
+        return image
 
 
 # Model to work with Patches
@@ -193,5 +244,55 @@ class PatchModel(nn.Module):
         x = self.encoder(x)  # x -> bs*num_patch x C(Maps) x H(Maps) x W(Maps)
 
         x = aggregate(x, batch_size, num_patch)
+        x = self.head(x)
+        return x
+
+
+class TilesModel(nn.Module):
+    def __init__(
+        self, arch="resnet50", n=CFG.target_size, pretrained=True, loss=CFG.loss
+    ):
+        super().__init__()
+        assert arch in ["resnet50", "resnet34"]
+        model_dict = {
+            "resnet50": models.resnet50,
+            "resnet34": models.resnet34,
+        }
+
+        self.loss = loss
+        # if we use BCE loss, need n-1 outputs
+        if self.loss in ["bce"]:
+            n -= 1
+
+        model = model_dict[arch](pretrained=pretrained)
+
+        self.encoder = nn.Sequential(*list(model.children())[:-2])
+        num_ftrs = list(model.children())[-1].in_features
+        self.avgpool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
+        self.maxpool = nn.AdaptiveMaxPool2d(output_size=(1, 1))
+        if CFG.model_cls == "deep":
+            self.head = nn.Sequential(
+                OrderedDict(
+                    [
+                        ("cls_fc", nn.Linear(2 * num_ftrs, 512)),
+                        ("cls_bn", nn.BatchNorm1d(512)),
+                        ("cls_relu", nn.ReLU(inplace=True)),
+                        ("cls_logit", nn.Linear(512, n)),
+                    ]
+                )
+            )
+        elif CFG.model_cls == "one_layer":
+            self.head = nn.Sequential(
+                OrderedDict([("cls_logit", nn.Linear(2 * num_ftrs, n))])
+            )
+
+        del model
+
+    def forward(self, x):
+        batch_size = x.shape[0]
+        x = self.encoder(x)  # x -> bs x C(Maps) x H(Maps) x W(Maps)
+        avg_x = self.avgpool(x)
+        max_x = self.maxpool(x)
+        x = torch.cat([avg_x, max_x], dim=1).view(batch_size, -1)
         x = self.head(x)
         return x
