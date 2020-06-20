@@ -38,7 +38,7 @@ class CFG:
     accum_step = 1  # effective batch size will be batch_size * accum_step
     dataset = "tiles"  # "patch", "tiles", "lazy", "hdf5"
     multi_lvl = False  # for Patch Dataset
-    aug_type = "heavy"  # "light" or "heavy"
+    aug_type = "light"  # "light" or "heavy"
     # model
     arch = "resnet34"  # "resnet34", "resnet50", "bitM", "efnet"
     enet_bone = "efficientnet-b0"
@@ -46,7 +46,7 @@ class CFG:
     model_cls = "one_layer"  # "one_layer" or "deep"
     pre_init_fc_bias = False
     # loss
-    ohem = False  # will work with ohem and bce
+    ohem = True  # will work with ohem and bce
     loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce"
     # optim
     optim = "radam"  # "adam", "sgd" or "radam"
@@ -66,4 +66,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce + rn34 + one cycle + 224x36 tiles + aug"
+    descript = "bce-ohem + rn34 + one cycle + 224x36 tiles"
