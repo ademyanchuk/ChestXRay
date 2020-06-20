@@ -16,6 +16,7 @@ from chestxray.config import CFG
 from chestxray.config import PANDA_IMGS
 from chestxray.config import TILES_IMGS
 
+TEST_PATH = Path("../input/prostate-cancer-grade-assessment/test_images")
 
 TV_MEAN = [0.485, 0.456, 0.406]
 TV_STD = [0.229, 0.224, 0.225]
@@ -350,34 +351,42 @@ class LazyTilesDataset(Dataset):
 
 
 class TilesTestDataset(Dataset):
-    def __init__(self, df, is_train=True, transform=None):
+    def __init__(
+        self, df, transform=None, suffix="tiff", img_path=TEST_PATH,
+    ):
         self.df = df
         self.transform = transform
-        self.is_train = is_train
+        self.suffix = suffix
+        self.img_path = img_path
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
         file_id = self.df[CFG.img_id_col].values[idx]
-        file_path = (
-            f"../input/prostate-cancer-grade-assessment/test_images/{file_id}.tiff"
-        )
-        image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
-        image = img_to_tiles(
-            image,
-            num_tiles=CFG.num_tiles,
-            is_train=self.is_train,
-            tile_h=CFG.tile_sz,
-            tile_w=CFG.tile_sz,
-        )
-        image = cv2.resize(
-            image, (CFG.img_height, CFG.img_width), interpolation=cv2.INTER_AREA
-        )
+
+        if self.suffix == "tiff":
+            file_path = f"{self.img_path}/{file_id}.{self.suffix}"
+            image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+        elif self.suffix == "jpeg":
+            file_path = f"{self.img_path}/{file_id}_1.{self.suffix}"
+            image = cv2.imread(str(file_path))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        # Make sure we can do square
+        assert int(np.sqrt(CFG.num_tiles)) == np.sqrt(CFG.num_tiles)
+        patch, _ = make_patch(image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles)
+
+        ids = np.arange(len(patch))
+        image = stack_sorted(patch, ids)
 
         if self.transform:
             augmented = self.transform(image=image)
             image = augmented["image"]
+        normalized = normalize(image=image)
+        image = normalized["image"]
+
+        image = image.transpose(2, 0, 1)  # to Chanel first
 
         return image
 
