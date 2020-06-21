@@ -53,7 +53,7 @@ class CFG:
     lr = 1e-3 if optim == "sgd" else 3e-4
     # schedule
     schedule_type = "one_cycle"  # "one_cycle", "reduce_on_plateau" or "cawr"
-    oc_final_div_factor = 1e2
+    oc_final_div_factor = 1e1
     cawr_T = 1
     cawr_Tmult = 2
     rlopp = 1  # learnig rate on plateu scheduler patience
@@ -62,8 +62,8 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 40
+    epoch = 50
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce-ohem + rn34 + one cycle + 224x36 tiles"
+    descript = "bce-ohem + rn34 + one cycle + 224x36 tiles + GEM"
