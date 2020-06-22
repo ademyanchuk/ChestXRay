@@ -267,6 +267,7 @@ class TilesTrainDataset(Dataset):
         suffix="tiff",
         debug=CFG.debug,
         loss=CFG.loss,
+        aux_tile=CFG.aux_tile,
     ):
         self.df = df
         self.labels = df[CFG.target_col].values
@@ -275,22 +276,13 @@ class TilesTrainDataset(Dataset):
         self.suffix = suffix
         self.debug = debug
         self.loss = loss
+        self.aux_tile = aux_tile
 
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        file_id = self.df[CFG.img_id_col].values[idx]
-        if self.suffix == "tiff":
-            file_path = f"{PANDA_IMGS}/{file_id}.{self.suffix}"
-            image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
-        elif self.suffix == "jpeg":
-            file_path = f"{PANDA_IMGS}/{file_id}_1.{self.suffix}"
-            image = cv2.imread(str(file_path))
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    def _make_image(self, image, num_tiles, tile_sz):
         # Make sure we can do square
-        assert int(np.sqrt(CFG.num_tiles)) == np.sqrt(CFG.num_tiles)
-        patch, _ = make_patch(image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles)
+        assert int(np.sqrt(num_tiles)) == np.sqrt(num_tiles)
+        patch, _ = make_patch(image, patch_size=tile_sz, num_patch=num_tiles)
+
         if self.is_train:
             ids = np.random.choice(range(len(patch)), size=len(patch), replace=False)
         else:
@@ -304,6 +296,35 @@ class TilesTrainDataset(Dataset):
         image = normalized["image"]
 
         image = image.transpose(2, 0, 1)  # to Chanel first
+        return image
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        file_id = self.df[CFG.img_id_col].values[idx]
+        if self.suffix == "tiff":
+            file_path = f"{PANDA_IMGS}/{file_id}.{self.suffix}"
+            image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+        elif self.suffix == "jpeg":
+            file_path = f"{PANDA_IMGS}/{file_id}_1.{self.suffix}"
+            image = cv2.imread(str(file_path))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        if not self.aux_tile:
+            image = self._make_image(image, CFG.num_tiles, CFG.tile_sz)
+
+        else:
+            if self.is_train:
+                use_aux = np.random.choice([True, False])
+                if use_aux:  # use auxillary tile size and number
+                    image = self._make_image(image, CFG.aux_tile_num, CFG.aux_tile_sz)
+                else:
+                    image = self._make_image(image, CFG.num_tiles, CFG.tile_sz)
+            else:
+                image_main = self._make_image(image, CFG.num_tiles, CFG.tile_sz)
+                image_aux = self._make_image(image, CFG.aux_tile_num, CFG.aux_tile_sz)
+                image = (image_main, image_aux)
 
         # if use bce, make label as bit encoded vector
         if self.loss == "bce":
@@ -312,7 +333,7 @@ class TilesTrainDataset(Dataset):
         else:
             label = self.labels[idx]
 
-        item = (image, label)
+        item = (image, label)  # if using aux tile, image will be tuple!!!
         if self.debug:
             item = (image, label, file_id)
 
@@ -400,7 +421,6 @@ class PatchTrainDataset(Dataset):
         suffix="tiff",
         debug=CFG.debug,
         loss=CFG.loss,
-        multi_lvl=False,
     ):
         self.df = df
         self.labels = df[CFG.target_col].values
@@ -409,7 +429,6 @@ class PatchTrainDataset(Dataset):
         self.suffix = suffix
         self.debug = debug
         self.loss = loss
-        self.multi_lvl = multi_lvl
 
     def __len__(self):
         return len(self.df)
@@ -424,33 +443,9 @@ class PatchTrainDataset(Dataset):
             image = cv2.imread(str(file_path))
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        if self.multi_lvl:
-            assert CFG.tiff_layer < 2  # we use 2 layers here
-            num_patch_low = int(0.2 * CFG.num_tiles)
-            num_patch_med = CFG.num_tiles - num_patch_low
-            patch_low, _ = make_patch(
-                image[CFG.tiff_layer],
-                patch_size=int(CFG.tile_sz * 4),
-                num_patch=num_patch_low,
-            )
-            patch_low_down = np.zeros(
-                (num_patch_low, CFG.tile_sz, CFG.tile_sz, 3), dtype=np.uint8
-            )
-            for i in range(num_patch_low):
-                patch_low_down[i] = cv2.resize(
-                    patch_low[i],
-                    (CFG.tile_sz, CFG.tile_sz),
-                    interpolation=cv2.INTER_AREA,
-                )
-            del patch_low
-            patch_med, _ = make_patch(
-                image[CFG.tiff_layer], patch_size=CFG.tile_sz, num_patch=num_patch_med
-            )
-            patch = np.concatenate([patch_low_down, patch_med])
-        else:
-            patch, coord = make_patch(
-                image[CFG.tiff_layer], patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
-            )
+        patch, coord = make_patch(
+            image[CFG.tiff_layer], patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
+        )
 
         if self.is_train:
             ids = np.random.choice(range(len(patch)), size=len(patch), replace=False)
