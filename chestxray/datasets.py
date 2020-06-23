@@ -47,7 +47,7 @@ augs_dict = {
             A.OneOf(
                 [
                     A.RGBShift(r_shift_limit=20, b_shift_limit=15, g_shift_limit=15),
-                    A.HueSaturationValue(hue_shift_limit=5, sat_shift_limit=5),
+                    A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=10),
                     A.NoOp(),
                 ]
             ),
@@ -373,14 +373,19 @@ class LazyTilesDataset(Dataset):
 
 class TilesTestDataset(Dataset):
     def __init__(
-        self, df, transform=None, suffix="tiff", img_path=TEST_PATH, aux_tile=CFG.aux_tile,
+        self,
+        df,
+        transform=None,
+        suffix="tiff",
+        img_path=TEST_PATH,
+        aux_tile=CFG.aux_tile,
     ):
         self.df = df
         self.transform = transform
         self.suffix = suffix
         self.img_path = img_path
         self.aux_tile = aux_tile
-        
+
     def _make_image(self, image, num_tiles, tile_sz):
         # Make sure we can do square
         assert int(np.sqrt(num_tiles)) == np.sqrt(num_tiles)
