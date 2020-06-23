@@ -373,12 +373,30 @@ class LazyTilesDataset(Dataset):
 
 class TilesTestDataset(Dataset):
     def __init__(
-        self, df, transform=None, suffix="tiff", img_path=TEST_PATH,
+        self, df, transform=None, suffix="tiff", img_path=TEST_PATH, aux_tile=CFG.aux_tile,
     ):
         self.df = df
         self.transform = transform
         self.suffix = suffix
         self.img_path = img_path
+        self.aux_tile = aux_tile
+        
+    def _make_image(self, image, num_tiles, tile_sz):
+        # Make sure we can do square
+        assert int(np.sqrt(num_tiles)) == np.sqrt(num_tiles)
+        patch, _ = make_patch(image, patch_size=tile_sz, num_patch=num_tiles)
+
+        ids = np.arange(len(patch))
+        image = stack_sorted(patch, ids)
+
+        if self.transform:
+            augmented = self.transform(image=image)
+            image = augmented["image"]
+        normalized = normalize(image=image)
+        image = normalized["image"]
+
+        image = image.transpose(2, 0, 1)  # to Chanel first
+        return image
 
     def __len__(self):
         return len(self.df)
@@ -394,20 +412,13 @@ class TilesTestDataset(Dataset):
             image = cv2.imread(str(file_path))
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        # Make sure we can do square
-        assert int(np.sqrt(CFG.num_tiles)) == np.sqrt(CFG.num_tiles)
-        patch, _ = make_patch(image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles)
+        if not self.aux_tile:
+            image = self._make_image(image, CFG.num_tiles, CFG.tile_sz)
 
-        ids = np.arange(len(patch))
-        image = stack_sorted(patch, ids)
-
-        if self.transform:
-            augmented = self.transform(image=image)
-            image = augmented["image"]
-        normalized = normalize(image=image)
-        image = normalized["image"]
-
-        image = image.transpose(2, 0, 1)  # to Chanel first
+        else:
+            image_main = self._make_image(image, CFG.num_tiles, CFG.tile_sz)
+            image_aux = self._make_image(image, CFG.aux_tile_num, CFG.aux_tile_sz)
+            image = (image_main, image_aux)
 
         return image
 
