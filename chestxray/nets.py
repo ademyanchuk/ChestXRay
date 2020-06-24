@@ -411,7 +411,7 @@ class AttentionModel(nn.Module):
         att = self.attention(x)  # att -> bs x 1 x num_patch
         # MIL attended pooling to get Bag-Embeeding from Instance Embeedings
         x = torch.matmul(att, x)  # x -> bs x 1 x C
-        x = x.squeeze()  # x -> bs x C
+        x = x.view(batch_size, -1)  # x -> bs x C
         # Classification on the Bag-Embeeding Level
         x = self.head(x)  # x -> bs x n
         return x, att
