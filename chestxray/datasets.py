@@ -453,14 +453,14 @@ class PatchTrainDataset(Dataset):
         file_id = self.df[CFG.img_id_col].values[idx]
         if self.suffix == "tiff":
             file_path = f"{PANDA_IMGS}/{file_id}.{self.suffix}"
-            image = skimage.io.MultiImage(file_path)
+            image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
         elif self.suffix == "jpeg":
             file_path = f"{PANDA_IMGS}/{file_id}_1.{self.suffix}"
             image = cv2.imread(str(file_path))
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         patch, coord = make_patch(
-            image[CFG.tiff_layer], patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
+            image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
         )
 
         if self.is_train:
@@ -498,30 +498,37 @@ class PatchTrainDataset(Dataset):
 
 
 class PatchTestDataset(Dataset):
-    def __init__(self, df, transform=None):
+    def __init__(self, df, transform=None, img_path=TEST_PATH, suffix="tiff"):
         self.df = df
         self.transform = transform
+        self.img_path = img_path
+        self.suffix = suffix
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
         file_id = self.df[CFG.img_id_col].values[idx]
-        file_path = (
-            f"../input/prostate-cancer-grade-assessment/test_images/{file_id}.tiff"
-        )
-        image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+        if self.suffix == "tiff":
+            file_path = f"{self.img_path}/{file_id}.{self.suffix}"
+            image = skimage.io.MultiImage(file_path)[CFG.tiff_layer]
+        elif self.suffix == "jpeg":
+            file_path = f"{self.img_path}/{file_id}_1.{self.suffix}"
+            image = cv2.imread(str(file_path))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         patch, coord = make_patch(
             image, patch_size=CFG.tile_sz, num_patch=CFG.num_tiles
         )
         # augment sequence
         if self.transform:
-            for p in patch:
-                augmented = self.transform(image=p)
-                p = augmented["image"]
+            for i in range(len(patch)):
+                augmented = self.transform(image=patch[i])
+                patch[i] = augmented["image"]
 
-        patch = patch.astype(np.float32) / 255
+        normalized = normalize(image=patch)
+        patch = normalized["image"]
+
         patch = patch.transpose(0, 3, 1, 2)
         patch = np.ascontiguousarray(patch)
 
