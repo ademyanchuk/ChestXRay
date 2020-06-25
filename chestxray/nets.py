@@ -374,7 +374,7 @@ class AttentionModel(nn.Module):
         model = model_dict[arch](pretrained=pretrained)
         # define feature encoder
         self.encoder = nn.Sequential(*list(model.children())[:-2])
-        num_ftrs = list(model.children())[-1].in_features
+        num_ftrs = list(model.children())[-1].in_features * 2  # concat pooling later
         # define gated attention module
         self.attention = GatedAttention(num_ftrs)
         # define classifier
@@ -403,9 +403,11 @@ class AttentionModel(nn.Module):
         # extract features
         x = self.encoder(x)  # x -> bs*num_patch x C(Maps) x H(Maps) x W(Maps)
         # reduce dimensionality of the feature vector
-        x = F.adaptive_avg_pool2d(x, (1, 1))  # x -> bs*num_patch x C(Maps) x 1 x 1
+        x_avg = F.adaptive_avg_pool2d(x, (1, 1))
+        x_max = F.adaptive_max_pool2d(x, (1, 1))
+        x = torch.cat([x_avg, x_max], 1)  # x -> bs*num_patch x C(Maps)*2 x 1 x 1
         x = x.view(batch_size, num_patch, -1)
-        # x -> bs x num_patch x C (C is now feature size)
+        # x -> bs x num_patch x C*2 (just C later)
 
         # get attention
         att = self.attention(x)  # att -> bs x 1 x num_patch
