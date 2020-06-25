@@ -27,23 +27,24 @@ class CFG:
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
-    num_tiles = 36
-    tile_sz = 224
+    num_tiles = 64
+    tile_sz = 168
     batch_size = 8
     accum_step = 1  # effective batch size will be batch_size * accum_step
-    dataset = "tiles"  # "patch", "tiles", "lazy", "hdf5"
+    dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
     aux_tile = False  # for Tiles Dataset
     aux_tile_sz = 0  # squares produced from both tile sizes need to be same size
     aux_tile_num = 0  # see above
-    aug_type = "heavy"  # "light" or "heavy"
+    aug_type = "light"  # "light" or "heavy"
     # model
+    att = True  # use attention for MIL-pooling, only for patch
     arch = "resnet34"  # "resnet34", "resnet50", "bitM", "efnet"
     enet_bone = "efficientnet-b0"
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
     pre_init_fc_bias = False
     # loss
-    ohem = True  # will work with ohem and bce
+    ohem = False  # will work with ohem and bce
     loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce"
     # optim
     optim = "radam"  # "adam", "sgd" or "radam"
@@ -59,11 +60,11 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 55
+    epoch = 45
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce-ohem + rn34 + one cycle + 224x36 tiles + aug"
+    descript = "bce + rn34 + one cycle + 168x64 patch + att"
 
 
 # Datasets
@@ -314,3 +315,88 @@ class TilesModel(nn.Module):
         x = torch.cat([avg_x, max_x], dim=1).view(batch_size, -1)
         x = self.head(x)
         return x
+
+
+class GatedAttention(nn.Module):
+    def __init__(self, f_in):
+        super(GatedAttention, self).__init__()
+        self.f_in = f_in
+        self.h = 128
+
+        self.attention_V = nn.Sequential(nn.Linear(self.f_in, self.h), nn.Tanh())
+
+        self.attention_U = nn.Sequential(nn.Linear(self.f_in, self.h), nn.Sigmoid())
+
+        self.attention_weights = nn.Linear(self.h, 1)
+
+    def forward(self, x):
+        # x has shape: b_sz x inst_sz x f_in_sz
+        a_v = self.attention_V(x)  # b_sz x inst_sz x h
+        a_u = self.attention_U(x)  # b_sz x inst_sz x h
+        a = self.attention_weights(a_v * a_u)  # b_sz x inst_sz x 1
+        a = torch.transpose(a, 2, 1)  # b_sz x 1 x inst_sz
+        a = F.softmax(a, dim=2)  # softmax over inst_sz
+        return a
+
+
+class AttentionModel(nn.Module):
+    def __init__(
+        self, arch="resnet50", n=CFG.target_size, pretrained=True, loss=CFG.loss,
+    ):
+        super().__init__()
+        assert arch in ["resnet50", "resnet34"]
+        model_dict = {
+            "resnet50": models.resnet50,
+            "resnet34": models.resnet34,
+        }
+
+        self.loss = loss
+        # if we use BCE loss, need n-1 outputs
+        if self.loss in ["bce"]:
+            n -= 1
+
+        # create back bone
+        model = model_dict[arch](pretrained=pretrained)
+        # define feature encoder
+        self.encoder = nn.Sequential(*list(model.children())[:-2])
+        num_ftrs = list(model.children())[-1].in_features
+        # define gated attention module
+        self.attention = GatedAttention(num_ftrs)
+        # define classifier
+        if CFG.model_cls == "deep":
+            self.head = nn.Sequential(
+                OrderedDict(
+                    [
+                        ("cls_fc", nn.Linear(num_ftrs, 512)),
+                        ("cls_bn", nn.BatchNorm1d(512)),
+                        ("cls_relu", nn.ReLU(inplace=True)),
+                        ("cls_logit", nn.Linear(512, n)),
+                    ]
+                )
+            )
+        elif CFG.model_cls == "one_layer":
+            self.head = nn.Sequential(
+                OrderedDict([("cls_logit", nn.Linear(num_ftrs, n))])
+            )
+
+        del model
+
+    def forward(self, x):
+        batch_size, num_patch, C, H, W = x.shape
+
+        x = x.view(-1, C, H, W)  # x -> bs*num_patch x C x H x W
+        # extract features
+        x = self.encoder(x)  # x -> bs*num_patch x C(Maps) x H(Maps) x W(Maps)
+        # reduce dimensionality of the feature vector
+        x = F.adaptive_avg_pool2d(x, (1, 1))  # x -> bs*num_patch x C(Maps) x 1 x 1
+        x = x.view(batch_size, num_patch, -1)
+        # x -> bs x num_patch x C (C is now feature size)
+
+        # get attention
+        att = self.attention(x)  # att -> bs x 1 x num_patch
+        # MIL attended pooling to get Bag-Embeeding from Instance Embeedings
+        x = torch.matmul(att, x)  # x -> bs x 1 x C
+        x = x.view(batch_size, -1)  # x -> bs x C
+        # Classification on the Bag-Embeeding Level
+        x = self.head(x)  # x -> bs x n
+        return x  # only logits
