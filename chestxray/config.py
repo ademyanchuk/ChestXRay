@@ -32,8 +32,8 @@ class CFG:
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
-    num_tiles = 64
-    tile_sz = 168
+    num_tiles = 49
+    tile_sz = 192
     batch_size = 8
     accum_step = 1  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
@@ -49,7 +49,7 @@ class CFG:
     model_cls = "one_layer"  # "one_layer" or "deep"
     pre_init_fc_bias = False
     # loss
-    ohem = False  # will work with ohem and bce
+    ohem = True  # will work with ohem and bce
     loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce"
     # optim
     optim = "radam"  # "adam", "sgd" or "radam"
@@ -69,4 +69,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce + rn34 + one cycle + 168x64 patch + att"
+    descript = "bce + rn34 + one cycle + 192x49 patch + att"
