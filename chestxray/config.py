@@ -32,8 +32,8 @@ class CFG:
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
-    num_tiles = 49
-    tile_sz = 192
+    num_tiles = 36
+    tile_sz = 224
     batch_size = 8
     accum_step = 1  # effective batch size will be batch_size * accum_step
     dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
@@ -69,4 +69,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce + rn34 + one cycle + 192x49 patch + att"
+    descript = "bce-ohem + rn34 + one cycle + 224x36 patch + att"
