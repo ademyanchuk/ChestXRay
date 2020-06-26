@@ -69,6 +69,8 @@ augs_dict = {
                 border_mode=cv2.BORDER_CONSTANT,
                 value=(255, 255, 255),
             ),
+            A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=10),
+            A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2),
             # This transformation first / 255. -> scale to [0,1] and
             # then - mean and / by std
             # A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
