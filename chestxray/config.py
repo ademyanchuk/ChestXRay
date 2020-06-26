@@ -32,10 +32,10 @@ class CFG:
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
-    num_tiles = 49
-    tile_sz = 192
-    batch_size = 8
-    accum_step = 1  # effective batch size will be batch_size * accum_step
+    num_tiles = 36
+    tile_sz = 256
+    batch_size = 4
+    accum_step = 2  # effective batch size will be batch_size * accum_step
     dataset = "tiles"  # "patch", "tiles", "lazy", "hdf5"
     aux_tile = False  # for Tiles Dataset
     aux_tile_sz = 0  # squares produced from both tile sizes need to be same size
@@ -69,4 +69,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce-ohem + rn34 + one cycle + 192x49 tiles + light aug1"
+    descript = "bce-ohem + rn34 + one cycle + 256x36 tiles + light aug"
