@@ -14,19 +14,19 @@ def show_from_ids_jpg(df, img_path, img_col, target_col, ids=None, label=None):
     if ids is None and label is None:
         print("Have to provide ids or label")
         return
-    if label:
+    if label is not None:
         # sample ids with provided label
         ids = df.loc[df[target_col] == label, img_col].sample(4)
 
     labels = [df.loc[df[img_col] == img_id, target_col].values[0] for img_id in ids]
     paths = [f"{img_path}/{img_id}.jpg" for img_id in ids]
-    plt.figure(figsize=(16, 16))
-    for n in range(4):
-        ax = plt.subplot(2, 2, n + 1)  # noqa
-        img = skimage.io.imread(paths[n])
-        plt.imshow(img)
-        plt.title(labels[n])
+    fig, axes = plt.subplots(2, 2, figsize=(10, 10))
+    for i, ax in enumerate(axes.reshape(-1)):
+        img = skimage.io.imread(paths[i])
+        ax.imshow(img)
+        ax.set_title(labels[i])
         # plt.axis("off")
+    plt.subplots_adjust(hspace=0.1, wspace=0.1)
 
 
 def show_from_ids(ids, df, img_path=PANDA_IMGS):
