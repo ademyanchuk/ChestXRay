@@ -33,14 +33,14 @@ class CFG:
     tiff_layer = 1
     stoch_sample = True
     num_tiles = 36
-    tile_sz = 256
-    batch_size = 4
-    accum_step = 2  # effective batch size will be batch_size * accum_step
+    tile_sz = 224
+    batch_size = 8
+    accum_step = 1  # effective batch size will be batch_size * accum_step
     dataset = "tiles"  # "patch", "tiles", "lazy", "hdf5"
     aux_tile = False  # for Tiles Dataset
     aux_tile_sz = 0  # squares produced from both tile sizes need to be same size
     aux_tile_num = 0  # see above
-    aug_type = "light"  # "light" or "heavy"
+    aug_type = "heavy"  # "light" or "heavy"
     # model
     att = False  # use attention for MIL-pooling, only for patch
     arch = "resnet34"  # "resnet34", "resnet50", "bitM", "efnet"
@@ -49,7 +49,7 @@ class CFG:
     model_cls = "one_layer"  # "one_layer" or "deep"
     pre_init_fc_bias = False
     # loss
-    ohem = True  # will work with ohem and bce
+    ohem = False  # will work with ohem and bce
     loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce"
     # optim
     optim = "radam"  # "adam", "sgd" or "radam"
@@ -65,8 +65,8 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 45
+    epoch = 50
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce-ohem + rn34 + one cycle + 256x36 tiles + light aug"
+    descript = "bce + rn34 + one cycle + 224x36 tiles + heavy aug"
