@@ -29,34 +29,14 @@ augs_dict = {
         [
             A.Flip(),
             A.ShiftScaleRotate(
-                shift_limit=0.1,
-                scale_limit=0.1,
-                rotate_limit=10,
+                shift_limit=0.05,
+                scale_limit=0.05,
+                rotate_limit=5,
                 border_mode=cv2.BORDER_CONSTANT,
                 value=(255, 255, 255),
             ),
-            A.OneOf(
-                [
-                    A.RandomBrightnessContrast(
-                        brightness_limit=0.2, contrast_limit=0.2
-                    ),
-                    A.RandomGamma(gamma_limit=(50, 150)),
-                    A.NoOp(),
-                ]
-            ),
-            A.OneOf(
-                [
-                    A.RGBShift(r_shift_limit=20, b_shift_limit=15, g_shift_limit=15),
-                    A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=10),
-                    A.NoOp(),
-                ]
-            ),
-            # A.OneOf([A.CLAHE(), A.NoOp()]),
-            # This transformation first / 255. -> scale to [0,1] and
-            # then - mean and / by std
-            # A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
-            # # Convert to torch tensor and swap axis to make Chanel first
-            # ToTensorV2(),
+            A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=10),
+            A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2),
         ]
     ),
     "light": A.Compose(
