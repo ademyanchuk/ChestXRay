@@ -27,17 +27,17 @@ class CFG:
     target_col = "isup_grade"
     tiff_layer = 1
     stoch_sample = True
-    num_tiles = 64
-    tile_sz = 168
+    num_tiles = 36
+    tile_sz = 224
     batch_size = 8
     accum_step = 1  # effective batch size will be batch_size * accum_step
-    dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
+    dataset = "tiles"  # "patch", "tiles", "lazy", "hdf5"
     aux_tile = False  # for Tiles Dataset
     aux_tile_sz = 0  # squares produced from both tile sizes need to be same size
     aux_tile_num = 0  # see above
-    aug_type = "light"  # "light" or "heavy"
+    aug_type = "heavy"  # "light" or "heavy"
     # model
-    att = True  # use attention for MIL-pooling, only for patch
+    att = False  # use attention for MIL-pooling, only for patch
     arch = "resnet34"  # "resnet34", "resnet50", "bitM", "efnet"
     enet_bone = "efficientnet-b0"
     finetune = False  # or "1stage"
@@ -60,11 +60,11 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 45
+    epoch = 50
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce + rn34 + one cycle + 168x64 patch + att"
+    descript = "bce + rn34 + one cycle + 224x36 tiles + heavy aug"
 
 
 # Datasets
@@ -359,7 +359,7 @@ class AttentionModel(nn.Module):
         model = model_dict[arch](pretrained=pretrained)
         # define feature encoder
         self.encoder = nn.Sequential(*list(model.children())[:-2])
-        num_ftrs = list(model.children())[-1].in_features
+        num_ftrs = list(model.children())[-1].in_features * 2  # concat pooling later
         # define gated attention module
         self.attention = GatedAttention(num_ftrs)
         # define classifier
@@ -388,9 +388,11 @@ class AttentionModel(nn.Module):
         # extract features
         x = self.encoder(x)  # x -> bs*num_patch x C(Maps) x H(Maps) x W(Maps)
         # reduce dimensionality of the feature vector
-        x = F.adaptive_avg_pool2d(x, (1, 1))  # x -> bs*num_patch x C(Maps) x 1 x 1
+        x_avg = F.adaptive_avg_pool2d(x, (1, 1))
+        x_max = F.adaptive_max_pool2d(x, (1, 1))
+        x = torch.cat([x_avg, x_max], 1)  # x -> bs*num_patch x C(Maps)*2 x 1 x 1
         x = x.view(batch_size, num_patch, -1)
-        # x -> bs x num_patch x C (C is now feature size)
+        # x -> bs x num_patch x C*2 (just C later)
 
         # get attention
         att = self.attention(x)  # att -> bs x 1 x num_patch
@@ -399,4 +401,4 @@ class AttentionModel(nn.Module):
         x = x.view(batch_size, -1)  # x -> bs x C
         # Classification on the Bag-Embeeding Level
         x = self.head(x)  # x -> bs x n
-        return x  # only logits
+        return x
