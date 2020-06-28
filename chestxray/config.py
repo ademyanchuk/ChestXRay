@@ -53,7 +53,7 @@ class CFG:
     loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce"
     # optim
     optim = "radam"  # "adam", "sgd" or "radam"
-    lr = 1e-3 if optim == "sgd" else 3e-4
+    lr = 1e-3 if optim == "sgd" else 9e-4
     # schedule
     schedule_type = "one_cycle"  # "one_cycle", "reduce_on_plateau" or "cawr"
     oc_final_div_factor = 1e1
