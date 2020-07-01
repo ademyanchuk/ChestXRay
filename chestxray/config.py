@@ -52,22 +52,24 @@ class CFG:
     ohem = True  # will work with ohem and bce
     loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce"
     # optim
-    optim = "adamw"  # "adam", "adamw" "sgd" or "radam"
+    optim = "radam"  # "adam", "adamw" "sgd" or "radam"
     lr = 1e-3 if optim == "sgd" else 3e-4
     wd = 1e-2
     # schedule
-    schedule_type = "one_cycle"  # "one_cycle", "reduce_on_plateau" or "cawr"
+    schedule_type = "cawr"  # "one_cycle", "reduce_on_plateau" or "cawr"
     oc_final_div_factor = 1e1
-    cawr_T = 1
-    cawr_Tmult = 2
+    cawr_T_0 = 10  # epochs untill first restart
+    cawr_T_mult = 2  # multiply next restarts
+    cawr_T_up = 1  # warmup epochs
+    cawr_gamma = 1.0
     rlopp = 1  # learnig rate on plateu scheduler patience
     # training
     resume = False
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 50
+    epoch = 70
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce-ohem + rn34 + one cycle + 224x36 tiles + AdamW"
+    descript = "bce-ohem + rn34 + one cycle + 224x36 tiles + CAWUR"
