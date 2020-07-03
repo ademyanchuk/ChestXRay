@@ -29,14 +29,14 @@ augs_dict = {
         [
             A.Flip(),
             A.ShiftScaleRotate(
-                shift_limit=0.05,
+                shift_limit=0.1,
                 scale_limit=0.1,
                 rotate_limit=5,
                 border_mode=cv2.BORDER_CONSTANT,
                 value=(255, 255, 255),
             ),
             A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=10),
-            # A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2),
+            A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
         ]
     ),
     "light": A.Compose(

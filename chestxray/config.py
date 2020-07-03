@@ -36,13 +36,13 @@ class CFG:
     tile_sz = 224
     batch_size = 8
     accum_step = 1  # effective batch size will be batch_size * accum_step
-    dataset = "tiles"  # "patch", "tiles", "lazy", "hdf5"
+    dataset = "patch"  # "patch", "tiles", "lazy", "hdf5"
     aux_tile = False  # for Tiles Dataset
     aux_tile_sz = 0  # squares produced from both tile sizes need to be same size
     aux_tile_num = 0  # see above
-    aug_type = "light"  # "light" or "heavy"
+    aug_type = "heavy"  # "light" or "heavy"
     # model
-    att = False  # use attention for MIL-pooling, only for patch
+    att = True  # use attention for MIL-pooling, only for patch
     arch = "resnet34"  # "resnet34", "resnet50", "bitM", "efnet"
     enet_bone = "efficientnet-b0"
     finetune = False  # or "1stage"
@@ -60,8 +60,8 @@ class CFG:
     oc_final_div_factor = 1e1
     cawr_T_0 = 10  # epochs untill first restart
     cawr_T_mult = 2  # multiply next restarts
-    cawr_T_up = 1  # warmup epochs
-    cawr_gamma = 1.0
+    cawr_T_up = 3  # warmup epochs
+    cawr_gamma = 0.8
     rlopp = 1  # learnig rate on plateu scheduler patience
     # training
     resume = False
@@ -72,4 +72,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce-ohem + rn34 + one cycle + 224x36 tiles + CAWUR"
+    descript = "bce-ohem + rn34 + 224x36 patch-att + CAWUR"
