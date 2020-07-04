@@ -250,6 +250,7 @@ class TilesTrainDataset(Dataset):
         debug=CFG.debug,
         loss=CFG.loss,
         aux_tile=CFG.aux_tile,
+        regression=False,
     ):
         self.df = df
         self.labels = df[CFG.target_col].values
@@ -259,6 +260,7 @@ class TilesTrainDataset(Dataset):
         self.debug = debug
         self.loss = loss
         self.aux_tile = aux_tile
+        self.regression = regression
 
     def _make_image(self, image, num_tiles, tile_sz):
         # Make sure we can do square
@@ -312,6 +314,8 @@ class TilesTrainDataset(Dataset):
         if self.loss == "bce":
             label = np.zeros(CFG.target_size - 1).astype(np.float32)
             label[: self.labels[idx]] = 1.0
+        elif self.regression:
+            label = self.labels[idx].astype(np.float32)
         else:
             label = self.labels[idx]
 

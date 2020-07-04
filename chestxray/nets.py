@@ -155,7 +155,12 @@ def make_BiT_model(num_classes=CFG.target_size, pretrained=True):
 
 class TilesModel(nn.Module):
     def __init__(
-        self, arch="resnet50", n=CFG.target_size, pretrained=True, loss=CFG.loss
+        self,
+        arch="resnet50",
+        n=CFG.target_size,
+        pretrained=True,
+        loss=CFG.loss,
+        regression=CFG.regression,
     ):
         super().__init__()
         assert arch in ["resnet50", "resnet34"]
@@ -165,31 +170,54 @@ class TilesModel(nn.Module):
         }
 
         self.loss = loss
+        self.regression = regression
         # if we use BCE loss, need n-1 outputs
         if self.loss in ["bce"]:
             n -= 1
+        self.n = n
 
         model = model_dict[arch](pretrained=pretrained)
 
         self.encoder = nn.Sequential(*list(model.children())[:-2])
-        num_ftrs = list(model.children())[-1].in_features
+        num_ftrs = list(model.children())[-1].in_features * 2  # concat pooling
         self.avgpool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
         self.maxpool = nn.AdaptiveMaxPool2d(output_size=(1, 1))
-        if CFG.model_cls == "deep":
-            self.head = nn.Sequential(
-                OrderedDict(
-                    [
-                        ("cls_fc", nn.Linear(2 * num_ftrs, 512)),
-                        ("cls_bn", nn.BatchNorm1d(512)),
-                        ("cls_relu", nn.ReLU(inplace=True)),
-                        ("cls_logit", nn.Linear(512, n)),
-                    ]
+
+        if self.regression:
+            if CFG.model_cls == "deep":
+                self.head = nn.Sequential(
+                    OrderedDict(
+                        [
+                            ("cls_fc", nn.Linear(num_ftrs, 512)),
+                            ("cls_bn", nn.BatchNorm1d(512)),
+                            ("cls_relu", nn.ReLU(inplace=True)),
+                            ("logits", nn.Linear(512, n)),
+                            ("regr", nn.Linear(n, 1)),
+                        ]
+                    )
                 )
-            )
-        elif CFG.model_cls == "one_layer":
-            self.head = nn.Sequential(
-                OrderedDict([("cls_logit", nn.Linear(2 * num_ftrs, n))])
-            )
+            elif CFG.model_cls == "one_layer":
+                self.head = nn.Sequential(
+                    OrderedDict(
+                        [("logits", nn.Linear(num_ftrs, n)), ("regr", nn.Linear(n, 1))]
+                    )
+                )
+        else:
+            if CFG.model_cls == "deep":
+                self.head = nn.Sequential(
+                    OrderedDict(
+                        [
+                            ("cls_fc", nn.Linear(num_ftrs, 512)),
+                            ("cls_bn", nn.BatchNorm1d(512)),
+                            ("cls_relu", nn.ReLU(inplace=True)),
+                            ("cls_logit", nn.Linear(512, n)),
+                        ]
+                    )
+                )
+            elif CFG.model_cls == "one_layer":
+                self.head = nn.Sequential(
+                    OrderedDict([("cls_logit", nn.Linear(num_ftrs, n))])
+                )
 
         del model
 
@@ -200,6 +228,9 @@ class TilesModel(nn.Module):
         max_x = self.maxpool(x)
         x = torch.cat([avg_x, max_x], dim=1).view(batch_size, -1)
         x = self.head(x)
+        if self.regression:
+            x = (self.n - 1) * torch.sigmoid(x)
+            x = x.view(batch_size)
         return x
 
 
