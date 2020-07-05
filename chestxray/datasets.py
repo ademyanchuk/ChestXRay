@@ -246,6 +246,7 @@ class TilesTrainDataset(Dataset):
         df,
         is_train=True,
         transform=None,
+        transform_stacked=None,
         suffix="tiff",
         debug=CFG.debug,
         loss=CFG.loss,
@@ -255,6 +256,7 @@ class TilesTrainDataset(Dataset):
         self.df = df
         self.labels = df[CFG.target_col].values
         self.transform = transform
+        self.transform_stacked = transform_stacked
         self.is_train = is_train
         self.suffix = suffix
         self.debug = debug
@@ -267,14 +269,20 @@ class TilesTrainDataset(Dataset):
         assert int(np.sqrt(num_tiles)) == np.sqrt(num_tiles)
         patch, _ = make_patch(image, patch_size=tile_sz, num_patch=num_tiles)
 
+        # augment sequence
+        if self.transform:
+            for i in range(len(patch)):
+                augmented = self.transform(image=patch[i])
+                patch[i] = augmented["image"]
+
         if self.is_train:
             ids = np.random.choice(range(len(patch)), size=len(patch), replace=False)
         else:
             ids = np.arange(len(patch))
         image = stack_sorted(patch, ids)
 
-        if self.transform:
-            augmented = self.transform(image=image)
+        if self.transform_stacked:
+            augmented = self.transform_stacked(image=image)
             image = augmented["image"]
         normalized = normalize(image=image)
         image = normalized["image"]
