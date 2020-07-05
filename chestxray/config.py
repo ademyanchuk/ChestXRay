@@ -40,9 +40,10 @@ class CFG:
     aux_tile = False  # for Tiles Dataset
     aux_tile_sz = 0  # squares produced from both tile sizes need to be same size
     aux_tile_num = 0  # see above
-    aug_type = "light"  # "light" or "heavy"
+    aug_type = "heavy"  # "light" or "heavy"
+    aug_concat = "light"
     # model
-    regression = True
+    regression = False
     att = False  # use attention for MIL-pooling, only for patch
     arch = "resnet34"  # "resnet34", "resnet50", "bitM", "efnet"
     enet_bone = "efficientnet-b0"
@@ -50,8 +51,8 @@ class CFG:
     model_cls = "deep"  # "one_layer" or "deep"
     pre_init_fc_bias = False
     # loss
-    ohem = False  # will work with ohem and bce
-    loss = "mse"  # "cce" or "ls_soft_ce", "ohem", "bce", "mse"
+    ohem = True  # will work with ohem and bce
+    loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce", "mse"
     # optim
     optim = "adamw"  # "adam", "adamw" "sgd" or "radam"
     lr = 1e-3 if optim == "sgd" else 3e-4
@@ -69,8 +70,8 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 50
+    epoch = 60
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "mse + rn34 + 224x36 tiles + OC"
+    descript = "bce-ohem + rn34 + 224x36 tiles + OC + 2augs"
