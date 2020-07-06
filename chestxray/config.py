@@ -55,7 +55,7 @@ class CFG:
     loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce", "mse"
     # optim
     optim = "adamw"  # "adam", "adamw" "sgd" or "radam"
-    lr = 1e-3 if optim == "sgd" else 3e-4
+    lr = 1e-3 if optim == "sgd" else 1e-4
     wd = 0.0
     # schedule
     schedule_type = "one_cycle"  # "one_cycle", "reduce_on_plateau" or "cawr", "none"
@@ -66,12 +66,13 @@ class CFG:
     cawr_gamma = 0.8
     rlopp = 1  # learnig rate on plateu scheduler patience
     # training
-    resume = False
-    prev_exp = "None"
-    from_epoch = 0
-    stage = 0
-    epoch = 60
+    resume = True
+    chp = "loss"
+    prev_exp = "05-07-2020-16-42"
+    from_epoch = 59
+    stage = 1
+    epoch = 120
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce-ohem + rn34 + 224x36 tiles + OC + 2augs"
+    descript = "bce-ohem + rn34 + 224x36 tiles + OC + 2augs cont."
