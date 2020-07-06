@@ -209,7 +209,7 @@ def img_to_tiles(img, num_tiles=36, is_train=True, *args, **kwargs):
 
 
 # Patch Version of Dataset from https://www.kaggle.com/hengck23/kernel16867b0575
-def make_patch(image, patch_size, num_patch):
+def make_patch(image, patch_size, num_patch, w_sample=False):
     h, w = image.shape[:2]
     s = patch_size
 
@@ -224,11 +224,12 @@ def make_patch(image, patch_size, num_patch):
     patch = patch.transpose(0, 2, 1, 3, 4).reshape(-1, s, s, 3)
 
     n = len(patch)
-    index = np.argsort(patch.reshape(n, -1).sum(-1))[:num_patch]
-
-    y = s * (index // (w // s))
-    x = s * (index % (w // s))
-    coord = np.stack([x, y, x + s, y + s]).T
+    if w_sample:
+        patch_means = patch.mean(axis=(1,2,3))
+        p_weights = (1 / patch_means) / (1 / patch_means).sum()
+        index = np.random.choice(np.arange(n), size=min(n, num_patch), replace=False, p=p_weights)
+    else:
+        index = np.argsort(patch.reshape(n, -1).sum(-1))[:num_patch]
 
     patch = patch[index]
     if len(patch) < num_patch:
@@ -236,8 +237,7 @@ def make_patch(image, patch_size, num_patch):
         patch = np.concatenate(
             [patch, np.full((n, patch_size, patch_size, 3), 255, dtype=np.uint8)], 0
         )
-        coord = np.concatenate([coord, np.full((n, 4), -1)], 0)
-    return patch, coord
+    return patch
 
 
 class TilesTrainDataset(Dataset):
@@ -252,6 +252,7 @@ class TilesTrainDataset(Dataset):
         loss=CFG.loss,
         aux_tile=CFG.aux_tile,
         regression=False,
+        w_sample=False,
     ):
         self.df = df
         self.labels = df[CFG.target_col].values
@@ -263,11 +264,12 @@ class TilesTrainDataset(Dataset):
         self.loss = loss
         self.aux_tile = aux_tile
         self.regression = regression
+        self.w_sample = w_sample
 
-    def _make_image(self, image, num_tiles, tile_sz):
+    def _make_image(self, image, num_tiles, tile_sz, **kwargs):
         # Make sure we can do square
         assert int(np.sqrt(num_tiles)) == np.sqrt(num_tiles)
-        patch, _ = make_patch(image, patch_size=tile_sz, num_patch=num_tiles)
+        patch = make_patch(image, patch_size=tile_sz, num_patch=num_tiles, **kwargs)
 
         # augment sequence
         if self.transform:
@@ -304,7 +306,7 @@ class TilesTrainDataset(Dataset):
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if not self.aux_tile:
-            image = self._make_image(image, CFG.num_tiles, CFG.tile_sz)
+            image = self._make_image(image, CFG.num_tiles, CFG.tile_sz, w_sample=self.w_sample)
 
         else:
             if self.is_train:
