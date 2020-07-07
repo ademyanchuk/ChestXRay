@@ -37,7 +37,7 @@ class CFG:
     batch_size = 8
     accum_step = 1  # effective batch size will be batch_size * accum_step
     dataset = "tiles"  # "patch", "tiles", "lazy", "hdf5"
-    w_sample = True  # for Tiles Dataset
+    w_sample = False  # for Tiles Dataset
     aux_tile = False  # for Tiles Dataset
     aux_tile_sz = 0  # squares produced from both tile sizes need to be same size
     aux_tile_num = 0  # see above
@@ -73,7 +73,7 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 60
+    epoch = 55
     n_fold = 4
     use_amp = True
     # Experiment
