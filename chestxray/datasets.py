@@ -29,14 +29,14 @@ augs_dict = {
         [
             A.Flip(),
             A.ShiftScaleRotate(
-                shift_limit=0.1,
-                scale_limit=0.1,
+                shift_limit=0.05,
+                scale_limit=0.05,
                 rotate_limit=5,
                 border_mode=cv2.BORDER_CONSTANT,
                 value=(255, 255, 255),
             ),
             A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=10),
-            A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
+            # A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3),
         ]
     ),
     "light": A.Compose(
@@ -225,9 +225,11 @@ def make_patch(image, patch_size, num_patch, w_sample=False):
 
     n = len(patch)
     if w_sample:
-        patch_means = patch.mean(axis=(1,2,3))
+        patch_means = patch.mean(axis=(1, 2, 3))
         p_weights = (1 / patch_means) / (1 / patch_means).sum()
-        index = np.random.choice(np.arange(n), size=min(n, num_patch), replace=False, p=p_weights)
+        index = np.random.choice(
+            np.arange(n), size=min(n, num_patch), replace=False, p=p_weights
+        )
     else:
         index = np.argsort(patch.reshape(n, -1).sum(-1))[:num_patch]
 
@@ -306,7 +308,9 @@ class TilesTrainDataset(Dataset):
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if not self.aux_tile:
-            image = self._make_image(image, CFG.num_tiles, CFG.tile_sz, w_sample=self.w_sample)
+            image = self._make_image(
+                image, CFG.num_tiles, CFG.tile_sz, w_sample=self.w_sample
+            )
 
         else:
             if self.is_train:

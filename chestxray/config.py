@@ -41,7 +41,7 @@ class CFG:
     aux_tile = False  # for Tiles Dataset
     aux_tile_sz = 0  # squares produced from both tile sizes need to be same size
     aux_tile_num = 0  # see above
-    aug_type = "light"  # "light" or "heavy"
+    aug_type = "heavy"  # "light" or "heavy"
     aug_concat = "light"
     # model
     regression = False
@@ -73,8 +73,8 @@ class CFG:
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 55
+    epoch = 80
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce-ohem + rn34 + 224x36 tiles + OC + 2augs light + only train"
+    descript = "bce-ohem + rn34 + 224x36 tiles + OC + 2augs heavy+light + only train"
