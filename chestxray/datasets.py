@@ -252,12 +252,17 @@ class TilesTrainDataset(Dataset):
         suffix="tiff",
         debug=CFG.debug,
         loss=CFG.loss,
+        use_cls_weight=False,
         aux_tile=CFG.aux_tile,
         regression=False,
         w_sample=False,
     ):
         self.df = df
         self.labels = df[CFG.target_col].values
+        self.cls_weights = None
+        self.use_cls_weight = use_cls_weight
+        if self.use_cls_weight:
+            self.cls_weights = df[CFG.cls_weight_col].values
         self.transform = transform
         self.transform_stacked = transform_stacked
         self.is_train = is_train
@@ -333,9 +338,17 @@ class TilesTrainDataset(Dataset):
         else:
             label = self.labels[idx]
 
-        item = (image, label)  # if using aux tile, image will be tuple!!!
+        if self.use_cls_weight:
+            sample_weight = self.cls_weights[idx]
+
+        item = {
+            "img": image,
+            "label": label,
+        }  # if using aux tile, image will be tuple!!!
+        if self.use_cls_weight:
+            item["sample_weight"] = sample_weight
         if self.debug:
-            item = (image, label, file_id)
+            item["file_id"] = file_id
 
         return item
 

@@ -138,9 +138,11 @@ class TopkBCEWithLogitsLoss(nn.Module):
         self.top_k = top_k
         self.criterion = nn.BCEWithLogitsLoss(reduction=reduction)
 
-    def forward(self, logits, labels, valid=False):
+    def forward(self, logits, labels, sample_weight=None, valid=False):
         loss = self.criterion(logits, labels).mean(dim=1)
         # print(loss)
+        if sample_weight is not None:
+            loss = loss * sample_weight / sample_weight.sum()
 
         if self.top_k == 1 or valid or len(loss) < 2:
             return torch.mean(loss)

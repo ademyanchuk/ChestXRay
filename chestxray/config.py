@@ -30,6 +30,7 @@ class CFG:
     target_size = 6
     img_id_col = "image_id"
     target_col = "isup_grade"
+    cls_weight_col = "class_weight"
     tiff_layer = 1
     stoch_sample = True
     num_tiles = 36
@@ -37,11 +38,12 @@ class CFG:
     batch_size = 8
     accum_step = 1  # effective batch size will be batch_size * accum_step
     dataset = "tiles"  # "patch", "tiles", "lazy", "hdf5"
+    return_weight = True
     w_sample = False  # for Tiles Dataset
     aux_tile = False  # for Tiles Dataset
     aux_tile_sz = 0  # squares produced from both tile sizes need to be same size
     aux_tile_num = 0  # see above
-    aug_type = "heavy"  # "light" or "heavy"
+    aug_type = "light"  # "light" or "heavy"
     aug_concat = "light"
     # model
     regression = False
@@ -49,13 +51,13 @@ class CFG:
     arch = "resnet34"  # "resnet34", "resnet50", "bitM", "efnet"
     enet_bone = "efficientnet-b0"
     finetune = False  # or "1stage"
-    model_cls = "deep"  # "one_layer" or "deep"
+    model_cls = "one_layer"  # "one_layer" or "deep"
     pre_init_fc_bias = False
     # loss
     ohem = True  # will work with ohem and bce
     loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce", "mse"
     # optim
-    optim = "adamw"  # "adam", "adamw" "sgd" or "radam"
+    optim = "radam"  # "adam", "adamw" "sgd" or "radam"
     lr = 1e-3 if optim == "sgd" else 3e-4
     wd = 0.0
     # schedule
@@ -67,14 +69,14 @@ class CFG:
     cawr_gamma = 0.8
     rlopp = 1  # learnig rate on plateu scheduler patience
     # training
-    use_validation = False
+    use_validation = True
     resume = False
     chp = "loss"
     prev_exp = "None"
     from_epoch = 0
     stage = 0
-    epoch = 80
+    epoch = 50
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce-ohem + rn34 + 224x36 tiles + OC + 2augs heavy+light + only train"
+    descript = "bce-ohem + rn34 + 224x36 tiles + OC + weighted loss"
