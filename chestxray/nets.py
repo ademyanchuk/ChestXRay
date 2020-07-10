@@ -153,6 +153,61 @@ def make_BiT_model(num_classes=CFG.target_size, pretrained=True):
     return model
 
 
+class CNNEncoder(nn.Module):
+    def __init__(self, arch, pretrained):
+        super().__init__()
+
+        implemented_archs = [
+            "resnet34",
+            "resnet50",
+            "efficientnet-b0",
+            "efficientnet-b3",
+        ]
+
+        assert isinstance(
+            pretrained, bool
+        ), f"pretrained should be bool, get {type(pretrained)}"
+        assert (
+            arch in implemented_archs
+        ), f"Arch should be in {implemented_archs}, get {arch}"
+
+        self.resnet_dict = {
+            "resnet50": models.resnet50,
+            "resnet34": models.resnet34,
+        }
+        self.effnet_tup = ("efficientnet-b0", "efficientnet-b3")
+
+        self.arch = arch
+        self.pretrained = pretrained
+
+        self.encoder, self.out_size = self._make_encoder()
+
+    def _make_encoder(self):
+        if self.arch in self.resnet_dict:
+            model = self.resnet_dict[self.arch](pretrained=self.pretrained)
+            encoder = nn.Sequential(*list(model.children())[:-2])
+            out_size = list(model.children())[-1].in_features
+            del model
+        elif self.arch in self.effnet_tup:
+            if self.pretrained:
+                encoder = EfficientNet.from_pretrained(self.arch)
+            else:
+                encoder = EfficientNet.from_name(self.arch)
+            # not sure if needed (don't wont these layers)
+            encoder._avg_pooling = nn.Identity()
+            encoder._dropout = nn.Identity()
+            encoder._fc = nn.Identity()
+            out_size = encoder._bn1.num_features
+
+        return encoder, out_size
+
+    def forward(self, x):
+        if self.arch in self.resnet_dict:
+            return self.encoder(x)
+        elif self.arch in self.effnet_tup:
+            return self.encoder.extract_features(x)
+
+
 class TilesModel(nn.Module):
     def __init__(
         self,
@@ -163,12 +218,6 @@ class TilesModel(nn.Module):
         regression=CFG.regression,
     ):
         super().__init__()
-        assert arch in ["resnet50", "resnet34"]
-        model_dict = {
-            "resnet50": models.resnet50,
-            "resnet34": models.resnet34,
-        }
-
         self.loss = loss
         self.regression = regression
         # if we use BCE loss, need n-1 outputs
@@ -176,10 +225,8 @@ class TilesModel(nn.Module):
             n -= 1
         self.n = n
 
-        model = model_dict[arch](pretrained=pretrained)
-
-        self.encoder = nn.Sequential(*list(model.children())[:-2])
-        num_ftrs = list(model.children())[-1].in_features * 2  # concat pooling
+        self.encoder = CNNEncoder(arch=arch, pretrained=pretrained)
+        num_ftrs = self.encoder.out_size * 2  # concat pooling
         self.avgpool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
         self.maxpool = nn.AdaptiveMaxPool2d(output_size=(1, 1))
 
@@ -218,8 +265,6 @@ class TilesModel(nn.Module):
                 self.head = nn.Sequential(
                     OrderedDict([("cls_logit", nn.Linear(num_ftrs, n))])
                 )
-
-        del model
 
     def forward(self, x):
         batch_size = x.shape[0]

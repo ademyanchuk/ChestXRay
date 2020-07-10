@@ -35,10 +35,10 @@ class CFG:
     stoch_sample = True
     num_tiles = 36
     tile_sz = 224
-    batch_size = 8
-    accum_step = 1  # effective batch size will be batch_size * accum_step
+    batch_size = 2
+    accum_step = 4  # effective batch size will be batch_size * accum_step
     dataset = "tiles"  # "patch", "tiles", "lazy", "hdf5"
-    return_weight = True
+    return_weight = False
     w_sample = False  # for Tiles Dataset
     aux_tile = False  # for Tiles Dataset
     aux_tile_sz = 0  # squares produced from both tile sizes need to be same size
@@ -48,7 +48,7 @@ class CFG:
     # model
     regression = False
     att = False  # use attention for MIL-pooling, only for patch
-    arch = "resnet34"  # "resnet34", "resnet50", "bitM", "efnet"
+    arch = "efficientnet-b0"  # "resnet34", "resnet50", "bitM", efnets
     enet_bone = "efficientnet-b0"
     finetune = False  # or "1stage"
     model_cls = "one_layer"  # "one_layer" or "deep"
@@ -79,4 +79,4 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce-ohem + rn34 + 224x36 tiles + OC + weighted loss"
+    descript = "bce-ohem + en-b3 + 224x36 tiles + OC"
