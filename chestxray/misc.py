@@ -1,11 +1,12 @@
 """Functions not related to some specific stages"""
 import os
 import random
-from collections import Counter, defaultdict
+from collections import Counter
+from collections import defaultdict
 
-from sklearn.utils import check_random_state
 import numpy as np
 import torch
+from sklearn.utils import check_random_state
 
 
 def seed_torch(seed=1982):
@@ -16,17 +17,34 @@ def seed_torch(seed=1982):
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
 
-class RepeatedStratifiedGroupKFold():
 
+def compute_weight(cls_count, beta):
+    return (1 - beta) / (1 - beta ** cls_count)
+
+
+def class_weights(beta, target):
+    cls, counts = np.unique(target, return_counts=True)
+    weights = {}
+    w_sum = 0.0
+    for (c, count) in zip(cls, counts):
+        weights[c] = compute_weight(count, beta)
+        w_sum += weights[c]
+    for c in weights:
+        weights[c] /= w_sum
+    return weights
+
+
+class RepeatedStratifiedGroupKFold:
     def __init__(self, n_splits=5, n_repeats=1, random_state=None):
         self.n_splits = n_splits
         self.n_repeats = n_repeats
         self.random_state = random_state
-        
+
     # Implementation based on this kaggle kernel:
     #    https://www.kaggle.com/jakubwasikowski/stratified-group-k-fold-cross-validation
     def split(self, X, y=None, groups=None):
         k = self.n_splits
+
         def eval_y_counts_per_fold(y_counts, fold):
             y_counts_per_fold[fold] += y_counts
             std_per_label = []
@@ -37,7 +55,7 @@ class RepeatedStratifiedGroupKFold():
                 std_per_label.append(label_std)
             y_counts_per_fold[fold] -= y_counts
             return np.mean(std_per_label)
-            
+
         rnd = check_random_state(self.random_state)
         for repeat in range(self.n_repeats):
             labels_num = np.max(y) + 1
@@ -49,7 +67,7 @@ class RepeatedStratifiedGroupKFold():
 
             y_counts_per_fold = defaultdict(lambda: np.zeros(labels_num))
             groups_per_fold = defaultdict(set)
-        
+
             groups_and_y_counts = list(y_counts_per_group.items())
             rnd.shuffle(groups_and_y_counts)
 
