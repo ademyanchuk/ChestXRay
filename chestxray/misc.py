@@ -34,6 +34,20 @@ def class_weights(beta, target):
     return weights
 
 
+def apply_tta(imgs: torch.Tensor):
+    tta_funcs = [
+        lambda x: x,
+        lambda x: torch.flip(x, (1,)),
+        lambda x: torch.flip(x, (2,)),
+        lambda x: torch.rot90(x, 1, (1, 2)),
+        lambda x: torch.rot90(x, -1, (1, 2)),
+    ]
+    tta_images = []
+    for img in imgs:
+        tta_images.append(torch.stack([f(img) for f in tta_funcs]))
+    return torch.stack(tta_images)
+
+
 class RepeatedStratifiedGroupKFold:
     def __init__(self, n_splits=5, n_repeats=1, random_state=None):
         self.n_splits = n_splits
