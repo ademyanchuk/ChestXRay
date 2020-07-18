@@ -25,6 +25,7 @@ class CFG:
     target_size = 6
     img_id_col = "image_id"
     target_col = "isup_grade"
+    cls_weight_col = "class_weight"
     tiff_layer = 1
     stoch_sample = True
     num_tiles = 36
@@ -32,11 +33,15 @@ class CFG:
     batch_size = 8
     accum_step = 1  # effective batch size will be batch_size * accum_step
     dataset = "tiles"  # "patch", "tiles", "lazy", "hdf5"
+    return_weight = True
+    w_sample = False  # for Tiles Dataset
     aux_tile = False  # for Tiles Dataset
     aux_tile_sz = 0  # squares produced from both tile sizes need to be same size
     aux_tile_num = 0  # see above
     aug_type = "light"  # "light" or "heavy"
+    aug_concat = "light"
     # model
+    regression = False
     att = False  # use attention for MIL-pooling, only for patch
     arch = "resnet34"  # "resnet34", "resnet50", "bitM", "efnet"
     enet_bone = "efficientnet-b0"
@@ -45,19 +50,23 @@ class CFG:
     pre_init_fc_bias = False
     # loss
     ohem = True  # will work with ohem and bce
-    loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce"
+    loss = "bce"  # "cce" or "ls_soft_ce", "ohem", "bce", "mse"
     # optim
-    optim = "adamw"  # "adam", "adamw" "sgd" or "radam"
+    optim = "radam"  # "adam", "adamw" "sgd" or "radam"
     lr = 1e-3 if optim == "sgd" else 3e-4
-    wd = 1e-2
+    wd = 0.0
     # schedule
-    schedule_type = "one_cycle"  # "one_cycle", "reduce_on_plateau" or "cawr"
+    schedule_type = "one_cycle"  # "one_cycle", "reduce_on_plateau" or "cawr", "none"
     oc_final_div_factor = 1e1
-    cawr_T = 1
-    cawr_Tmult = 2
+    cawr_T_0 = 10  # epochs untill first restart
+    cawr_T_mult = 2  # multiply next restarts
+    cawr_T_up = 3  # warmup epochs
+    cawr_gamma = 0.8
     rlopp = 1  # learnig rate on plateu scheduler patience
     # training
+    use_validation = True
     resume = False
+    chp = "loss"
     prev_exp = "None"
     from_epoch = 0
     stage = 0
@@ -65,7 +74,7 @@ class CFG:
     n_fold = 4
     use_amp = True
     # Experiment
-    descript = "bce-ohem + rn34 + one cycle + 224x36 tiles + AdamW"
+    descript = "bce-ohem + rn34 + 224x36 tiles + OC + weighted loss"
 
 
 # Datasets
