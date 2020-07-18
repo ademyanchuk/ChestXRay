@@ -1478,6 +1478,18 @@ all = ["matplotlib (>=3.1)"]
 
 [[package]]
 category = "main"
+description = "(Unofficial) PyTorch Image Models"
+name = "timm"
+optional = false
+python-versions = ">=3.6"
+version = "0.1.30"
+
+[package.dependencies]
+torch = ">=1.0"
+torchvision = "*"
+
+[[package]]
+category = "main"
 description = "Python Library for Tom's Obvious, Minimal Language"
 name = "toml"
 optional = false
@@ -1676,7 +1688,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "aedb78f778d54b43abd1911ee82aa69b1d709554d121fcb418b76b67d02d24e6"
+content-hash = "b6fce22ac0ddccacb973bd94a39d10080bb619614532e7cdc77ec6e607775d1e"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -2539,6 +2551,10 @@ text-unidecode = [
 tifffile = [
     {file = "tifffile-2020.2.16-py3-none-any.whl", hash = "sha256:0439b63efcda551dc1bfd126fcd6cd2b3f60e98d7d165e3aedc5df637b71382f"},
     {file = "tifffile-2020.2.16.tar.gz", hash = "sha256:f03b03c4863d232e746859ebdf36e3dfd974364d9944d884bc82b430b0d7290d"},
+]
+timm = [
+    {file = "timm-0.1.30-py3-none-any.whl", hash = "sha256:f1b32d753c760beef0bc2b4bf7b5c9fd8b160162966e84edf65bb6dfd70ce979"},
+    {file = "timm-0.1.30.tar.gz", hash = "sha256:83b80886a4e4b110845273aa4457d41e2f34993747bdf78ae92a4648b79b386f"},
 ]
 toml = [
     {file = "toml-0.10.0-py2.7.egg", hash = "sha256:f1db651f9657708513243e61e6cc67d101a39bad662eaa9b5546f789338e07a3"},
