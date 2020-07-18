@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -132,17 +134,20 @@ class TopkCrossEntropy(_WeightedLoss):
 
 class TopkBCEWithLogitsLoss(nn.Module):
     def __init__(
-        self, top_k=0.7, reduction="none",
+        self,
+        top_k: float = 0.7,
+        reduction: str = "none",
+        pos_weight: Optional[torch.Tensor] = None,
     ):
         super(TopkBCEWithLogitsLoss, self).__init__()
         self.top_k = top_k
-        self.criterion = nn.BCEWithLogitsLoss(reduction=reduction)
+        self.criterion = nn.BCEWithLogitsLoss(
+            reduction=reduction, pos_weight=pos_weight
+        )
 
-    def forward(self, logits, labels, sample_weight=None, valid=False):
+    def forward(self, logits, labels, valid=False):
         loss = self.criterion(logits, labels).mean(dim=1)
         # print(loss)
-        if sample_weight is not None:
-            loss = loss * sample_weight / sample_weight.sum()
 
         if self.top_k == 1 or valid or len(loss) < 2:
             return torch.mean(loss)
