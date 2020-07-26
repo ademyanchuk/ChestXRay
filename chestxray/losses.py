@@ -158,9 +158,9 @@ class TopkBCEWithLogitsLoss(nn.Module):
 
 # from https://www.kaggle.com/c/tgs-salt-identification-challenge/discussion/65938
 class FocalLoss(nn.Module):
-    def __init__(self, alpha=1, gamma=2, logits=True, reduce=True):
+    def __init__(self, pos_weight=1, gamma=2, logits=True, reduce=True):
         super(FocalLoss, self).__init__()
-        self.alpha = alpha
+        self.alpha = pos_weight
         self.gamma = gamma
         self.logits = logits
         self.reduce = reduce
