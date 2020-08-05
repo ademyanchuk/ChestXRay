@@ -5,7 +5,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATA_PATH = Path(os.getenv("DATA_PATH"))
+try:
+    DATA_PATH = Path(os.getenv("DATA_PATH"))
+except TypeError:
+    # mock in on kaggle
+    DATA_PATH = Path("/kaggle")
 
 PROJ_PATH = DATA_PATH.parent
 
